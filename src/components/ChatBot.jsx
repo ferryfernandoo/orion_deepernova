@@ -403,40 +403,6 @@ const ChatBot = () => {
     isPausedRef.current = false;
     setIsPaused(false);
 
-    // Start tracking time for status messages
-    streamingStartTimeRef.current = Date.now();
-    setLoadingStatusMsg('');
-
-    // Status messages that change based on elapsed time
-    const statusMessages = [
-      { time: 5000, msg: 'tunggu bre lagi baca data' },
-      { time: 10000, msg: 'hmm aku lagi nyusun sarafku' },
-      { time: 15000, msg: 'ini aku dapet data banyak bro bentar lagi yak' },
-    ];
-
-    // Set up status update interval
-    if (statusUpdateIntervalRef.current) {
-      clearInterval(statusUpdateIntervalRef.current);
-    }
-
-    statusUpdateIntervalRef.current = setInterval(() => {
-      if (streamingStartTimeRef.current) {
-        const elapsed = Date.now() - streamingStartTimeRef.current;
-        let matchedMsg = '';
-        
-        for (let i = statusMessages.length - 1; i >= 0; i--) {
-          // Add random delay (±1000ms) for natural feel
-          const randomDelay = (Math.random() - 0.5) * 2000;
-          if (elapsed > statusMessages[i].time + randomDelay) {
-            matchedMsg = statusMessages[i].msg;
-            break;
-          }
-        }
-        
-        setLoadingStatusMsg(matchedMsg);
-      }
-    }, 500); // Check every 500ms for smooth updates
-
     // Function untuk update text secara increment - multiple chars per tick
     const updateStreamingText = () => {
       if (charIndexRef.current <= text.length) {
@@ -703,6 +669,41 @@ const ChatBot = () => {
     if (globalThis.textareaRef) {
       globalThis.textareaRef.style.height = 'auto';
     }
+    
+    // Start tracking time for status messages - from the moment user sends message
+    streamingStartTimeRef.current = Date.now();
+    setLoadingStatusMsg('');
+    
+    // Status messages that change based on elapsed time
+    // Pre-calculate random delays for consistency
+    const statusMessages = [
+      { time: 5000, msg: 'tunggu bre lagi baca data', randomDelay: (Math.random() - 0.5) * 2000 },
+      { time: 10000, msg: 'hmm aku lagi nyusun sarafku', randomDelay: (Math.random() - 0.5) * 2000 },
+      { time: 15000, msg: 'ini aku dapet data banyak bro bentar lagi yak', randomDelay: (Math.random() - 0.5) * 2000 },
+    ];
+    
+    // Set up status update interval
+    if (statusUpdateIntervalRef.current) {
+      clearInterval(statusUpdateIntervalRef.current);
+    }
+    
+    statusUpdateIntervalRef.current = setInterval(() => {
+      if (streamingStartTimeRef.current) {
+        const elapsed = Date.now() - streamingStartTimeRef.current;
+        let matchedMsg = '';
+        
+        for (let i = statusMessages.length - 1; i >= 0; i--) {
+          // Use the pre-calculated random delay for consistency
+          if (elapsed > statusMessages[i].time + statusMessages[i].randomDelay) {
+            matchedMsg = statusMessages[i].msg;
+            break;
+          }
+        }
+        
+        setLoadingStatusMsg(matchedMsg);
+      }
+    }, 500); // Check every 500ms for smooth updates
+    
     setLoading(true);
     setError(null);
     setIsScrolledUp(false); // Hide scroll button
@@ -787,6 +788,41 @@ const ChatBot = () => {
     if (lastMessage) {
       setError(null);
       setLastMessage(null);
+      
+      // Start tracking time for status messages - from the moment retry starts
+      streamingStartTimeRef.current = Date.now();
+      setLoadingStatusMsg('');
+      
+      // Status messages that change based on elapsed time
+      // Pre-calculate random delays for consistency
+      const retryStatusMessages = [
+        { time: 5000, msg: 'tunggu bre lagi baca data', randomDelay: (Math.random() - 0.5) * 2000 },
+        { time: 10000, msg: 'hmm aku lagi nyusun sarafku', randomDelay: (Math.random() - 0.5) * 2000 },
+        { time: 15000, msg: 'ini aku dapet data banyak bro bentar lagi yak', randomDelay: (Math.random() - 0.5) * 2000 },
+      ];
+      
+      // Set up status update interval
+      if (statusUpdateIntervalRef.current) {
+        clearInterval(statusUpdateIntervalRef.current);
+      }
+      
+      statusUpdateIntervalRef.current = setInterval(() => {
+        if (streamingStartTimeRef.current) {
+          const elapsed = Date.now() - streamingStartTimeRef.current;
+          let matchedMsg = '';
+          
+          for (let i = retryStatusMessages.length - 1; i >= 0; i--) {
+            // Use the pre-calculated random delay for consistency
+            if (elapsed > retryStatusMessages[i].time + retryStatusMessages[i].randomDelay) {
+              matchedMsg = retryStatusMessages[i].msg;
+              break;
+            }
+          }
+          
+          setLoadingStatusMsg(matchedMsg);
+        }
+      }, 500); // Check every 500ms for smooth updates
+      
       setLoading(true);
       
       try {
