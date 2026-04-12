@@ -110,7 +110,21 @@ const buildContextualPrompt = (messages, language = 'id', currentMessage = '', c
     })
     .join('\n');
 
-  const systemPrompt = SYSTEM_PROMPTS[language] || SYSTEM_PROMPTS.id;
+  // Get current date and time information
+  const now = new Date();
+  const days = language === 'id' 
+    ? ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+    : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dayName = days[now.getDay()];
+  const dateStr = language === 'id'
+    ? `${dayName}, ${now.getDate()} ${now.toLocaleString('id-ID', { month: 'long', year: 'numeric' })}`
+    : `${dayName}, ${now.toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+  const timeStr = now.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  const timeInfo = language === 'id'
+    ? `\nWAKTU SAAT INI: ${dateStr}, pukul ${timeStr} (WIB)`
+    : `\nCURRENT TIME: ${dateStr}, ${now.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}`;
+
+  const systemPrompt = (SYSTEM_PROMPTS[language] || SYSTEM_PROMPTS.id) + timeInfo;
   
   // Retrieve relevant memories from cross-room conversations
   let memoryContext = '';
@@ -178,4 +192,3 @@ export const sendMessageToGrok = async (message, conversationHistory = [], langu
     throw error;
   }
 };
-
