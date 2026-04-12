@@ -106,7 +106,9 @@ const buildContextualPrompt = (messages, language = 'id', currentMessage = '', c
     .slice(-5)  // Last 5 messages only for brevity
     .map(msg => {
       const sender = msg.sender === 'user' ? 'User' : 'Orion';
-      return `${sender}: ${msg.text.substring(0, 100)}`;
+      const timestamp = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : '';
+      const timeInfo = timestamp ? ` [${timestamp}]` : '';
+      return `${sender}${timeInfo}: ${msg.text.substring(0, 100)}`;
     })
     .join('\n');
 
