@@ -656,24 +656,10 @@
   color: #dc2626;
 }
 
-/* Streaming text cursor */
+/* Streaming text cursor - disabled to show only typing indicator dots */
 .message-content.streaming::after {
-  content: '▌';
-  animation: blink 0.8s infinite;
-  margin-left: 2px;
-  font-weight: bold;
-  color: #2563eb;
-}
-
-@keyframes blink {
-  0%,
-  49% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: 0;
-  }
+  content: '';
+  display: none;
 }
 
 /* Collapsed message styling */
