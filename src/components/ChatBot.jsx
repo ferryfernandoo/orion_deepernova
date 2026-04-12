@@ -345,9 +345,26 @@ const ChatBot = () => {
     }));
   };
 
+  // Create a placeholder bot message immediately so the response feels faster
+  const createBotPlaceholder = () => {
+    const placeholderId = Date.now() + Math.floor(Math.random() * 1000);
+    const placeholderMessage = {
+      id: placeholderId,
+      text: '',
+      sender: 'bot',
+      timestamp: new Date(),
+      isStreaming: true,
+      isPlaceholder: true,
+    };
+    setMessages((prev) => [...prev, placeholderMessage]);
+    setAnimatingMessages((prev) => ({ ...prev, [placeholderId]: true }));
+    setIsScrolledUp(false);
+    return placeholderId;
+  };
+
   // Add AI message dengan animasi streaming
-  const addStreamingMessage = (text) => {
-    const messageId = Date.now() + 1;
+  const addStreamingMessage = (text, existingMessageId = null) => {
+    const messageId = existingMessageId || Date.now() + 1;
     const emptyMessage = {
       id: messageId,
       text: '',
@@ -355,8 +372,17 @@ const ChatBot = () => {
       timestamp: new Date(),
       isStreaming: true,
     };
-    
-    setMessages((prev) => [...prev, emptyMessage]);
+
+    if (!existingMessageId) {
+      setMessages((prev) => [...prev, emptyMessage]);
+    } else {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId ? { ...msg, ...emptyMessage } : msg
+        )
+      );
+    }
+
     setAnimatingMessages((prev) => ({ ...prev, [messageId]: true }));
     setIsScrolledUp(false); // Hide scroll button
     
@@ -610,6 +636,7 @@ const ChatBot = () => {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const placeholderId = createBotPlaceholder();
     setInputValue('');
     setLoading(true);
     setError(null);
@@ -650,7 +677,7 @@ const ChatBot = () => {
       
       // Add bot response dengan animasi streaming
       // loading akan tetap true sampai streaming selesai di finishStreaming()
-      addStreamingMessage(botResponseText);
+      addStreamingMessage(botResponseText, placeholderId);
       
       setLastMessage(null);
 
