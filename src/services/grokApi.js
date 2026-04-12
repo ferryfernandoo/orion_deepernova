@@ -13,6 +13,11 @@ IDENTITAS:
 - Jangan sebut Deepseek
 - Jawab langsung & informatif
 
+WAKTU SAAT INI:
+- Ketika ditanya jam, tanggal, atau hari sekarang, gunakan informasi WAKTU SAAT INI yang tertera di bawah
+- Jawab dengan yakin dan jelas tentang waktu saat ini
+- Contoh: "Sekarang jam 14:30, hari Minggu, 13 April 2026"
+
 GAYA RESPONS:
 - JELAS & PADAT: Jawaban yang substansial, informatif, mudah dicerna
 - TERSTRUKTUR: Gunakan bullets/numbering untuk clarity jika ada multiple points
@@ -58,6 +63,11 @@ IDENTITY:
 - If asked who you are: "I'm Orion AI, model deepernova_id1_, 912 billion parameters"
 - Never mention Deepseek
 - Answer directly & informatively
+
+CURRENT TIME:
+- When asked about the time, date, or day right now, use the CURRENT TIME information shown below
+- Answer confidently and clearly about the current time
+- Example: "It's now 2:30 PM, Sunday, April 13, 2026"
 
 RESPONSE STYLE:
 - CLEAR & SUBSTANTIVE: Provide meaningful, information-dense answers
@@ -116,15 +126,21 @@ const buildContextualPrompt = (messages, language = 'id', currentMessage = '', c
     ? ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
     : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const dayName = days[now.getDay()];
-  const dateStr = language === 'id'
-    ? `${dayName}, ${now.getDate()} ${now.toLocaleString('id-ID', { month: 'long', year: 'numeric' })}`
-    : `${dayName}, ${now.toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
-  const timeStr = now.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-  const timeInfo = language === 'id'
-    ? `\nWAKTU SAAT INI: ${dateStr}, pukul ${timeStr} (WIB)`
-    : `\nCURRENT TIME: ${dateStr}, ${now.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}`;
+  const monthName = language === 'id'
+    ? now.toLocaleString('id-ID', { month: 'long' })
+    : now.toLocaleString('en-US', { month: 'long' });
+  const date = now.getDate();
+  const year = now.getFullYear();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  
+  const timeDisplayId = `INFORMASI WAKTU REAL-TIME (GUNAKAN UNTUK MENJAWAB PERTANYAAN TENTANG JAM/TANGGAL/HARI):\n- Hari: ${dayName}\n- Tanggal: ${date} ${monthName} ${year}\n- Waktu: ${hours}:${minutes}:${seconds} WIB`;
+  const timeDisplayEn = `REAL-TIME TIME INFORMATION (USE THIS TO ANSWER QUESTIONS ABOUT TIME/DATE/DAY):\n- Day: ${dayName}\n- Date: ${monthName} ${date}, ${year}\n- Time: ${hours}:${minutes}:${seconds}`;
+  
+  const timeInfo = language === 'id' ? timeDisplayId : timeDisplayEn;
 
-  const systemPrompt = (SYSTEM_PROMPTS[language] || SYSTEM_PROMPTS.id) + timeInfo;
+  const systemPrompt = (SYSTEM_PROMPTS[language] || SYSTEM_PROMPTS.id) + '\n\n' + timeInfo;
   
   // Retrieve relevant memories from cross-room conversations
   let memoryContext = '';
