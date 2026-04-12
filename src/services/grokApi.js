@@ -1,32 +1,8 @@
-// OpenRouter API Service with Orion AI Identity & Advanced Context Memory
-import { OpenRouter } from "@openrouter/sdk";
+// Deepseek API Service with Orion AI Identity & Advanced Context Memory
 import { memoryService } from './memoryService.js';
 
-const openrouter = new OpenRouter({
-  apiKey: import.meta.env.VITE_OPENROUTER_API_KEY
-});
-
-const MODEL = "deepseek/deepseek-v3.2";
-
-// Get current date and time information
-const getCurrentDateTime = () => {
-  const now = new Date();
-  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-  
-  const dayNameId = days[now.getDay()];
-  const monthNameId = months[now.getMonth()];
-  const date = now.getDate();
-  const year = now.getFullYear();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-  
-  return {
-    id: `${dayNameId}, ${date} ${monthNameId} ${year} - ${hours}:${minutes}:${seconds} WIB`,
-    en: `${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} - ${hours}:${minutes}:${seconds} UTC`,
-  };
-};
+const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
+const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
 
 // Multilingual system prompts
 const SYSTEM_PROMPTS = {
@@ -135,10 +111,6 @@ const buildContextualPrompt = (messages, language = 'id', currentMessage = '', c
     .join('\n');
 
   const systemPrompt = SYSTEM_PROMPTS[language] || SYSTEM_PROMPTS.id;
-  const currentDateTime = getCurrentDateTime();
-  const dateTimeInfo = language === 'id' 
-    ? `\n\nWAKTU SEKARANG: ${currentDateTime.id}`
-    : `\n\nCURRENT DATE & TIME: ${currentDateTime.en}`;
   
   // Retrieve relevant memories from cross-room conversations
   let memoryContext = '';
@@ -146,8 +118,8 @@ const buildContextualPrompt = (messages, language = 'id', currentMessage = '', c
     memoryContext = memoryService.getMemoryContext(currentMessage, currentConversationId, language);
   }
   
-  // Build final prompt with context, memory and datetime
-  let finalPrompt = systemPrompt + dateTimeInfo;
+  // Build final prompt with context and memory
+  let finalPrompt = systemPrompt;
   
   if (memoryContext) {
     finalPrompt += memoryContext;
@@ -163,7 +135,7 @@ const buildContextualPrompt = (messages, language = 'id', currentMessage = '', c
 
 export const sendMessageToGrok = async (message, conversationHistory = [], language = 'id', conversationId = null) => {
   try {
-    // Build message history for context (last 6 messages for performance)
+    // Build message history for context (last 10 messages for performance)
     const contextMessages = conversationHistory
       .slice(-6)
       .map(msg => ({
@@ -171,53 +143,39 @@ export const sendMessageToGrok = async (message, conversationHistory = [], langu
         content: msg.text,
       }));
 
-    // Stream the response to get usage information
-    const stream = await openrouter.chat.send({
-      model: MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: buildContextualPrompt(conversationHistory, language, message, conversationId),
-        },
-        ...contextMessages,
-        {
-          role: 'user',
-          content: message,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 1024,
-      stream: true,
+    const response = await fetch(DEEPSEEK_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'deepseek-v3',
+        messages: [
+          {
+            role: 'system',
+            content: buildContextualPrompt(conversationHistory, language, message, conversationId),
+          },
+          ...contextMessages,
+          {
+            role: 'user',
+            content: message,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 1024,
+      }),
     });
 
-    let responseText = "";
-    let usage = null;
-
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) {
-        responseText += content;
-      }
-
-      // Usage information comes in the final chunk
-      if (chunk.usage) {
-        usage = chunk.usage;
-      }
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.statusText}`);
     }
 
-    // Return response in compatible format
-    return {
-      choices: [
-        {
-          message: {
-            content: responseText,
-          },
-        },
-      ],
-      usage: usage,
-    };
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error('Orion AI Error:', error);
     throw error;
   }
 };
+
