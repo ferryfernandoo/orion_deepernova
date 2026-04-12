@@ -522,8 +522,9 @@ const ChatBot = () => {
       
       // Preserve spacing for numbered lists and conclusions (multiple newlines)
       formattedText = formattedText
-        .replace(/([^\n])\n(\d+\..*)/gm, '$1\n\n$2')
-        .replace(/(\d+\.)([^\n]*)\n(?=\d+\.)/g, '$1$2\n\n');
+        .replace(/([^\n])\n(\d+\..*)/gm, '$1\n\n\n\n\n\n\n\n\n\n$2')
+        .replace(/(\d+\.)([^\n]*)\n(?=\d+\.)/g, '$1$2\n')
+        .replace(/(\d+\..*)\n\n(?![\d+\.])/gm, '$1\n\n\n\n\n\n\n\n\n\n');
       
       return (
         <React.Fragment key={blockIdx}>
@@ -537,7 +538,7 @@ const ChatBot = () => {
                     {lineIdx < paragraph.split('\n').length - 1 && <br />}
                   </React.Fragment>
                 ))}
-                {idx < formattedText.split('\n\n').length - 1 && <br />}
+                {idx < formattedText.split('\n\n').length - 1 && <><br /><br /></>}
               </React.Fragment>
             ))}
         </React.Fragment>
