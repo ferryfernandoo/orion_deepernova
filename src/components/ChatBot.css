@@ -766,6 +766,13 @@
   font-size: 14px;
   font-weight: 500;
   animation: fadeInOut 0.6s ease-in-out;
+  white-space: nowrap;
+}
+
+.message.loading .message-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 @keyframes fadeInOut {
