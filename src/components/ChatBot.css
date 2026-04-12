@@ -516,7 +516,7 @@
 
 .toggle-sidebar-btn {
   position: fixed;
-  top: 70px;
+  top: 30px;
   left: 20px;
   z-index: 1000;
   background-color: #ffffff;
@@ -555,7 +555,7 @@
   padding: 24px 24px 24px 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   background: #ffffff;
   scroll-behavior: auto;
 }
@@ -842,11 +842,24 @@
   display: flex;
   gap: 0;
   padding: 20px 24px;
-  background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.3) 100%);
-  backdrop-filter: blur(8px);
+  background: transparent;
+  backdrop-filter: none;
   border-top: none;
   position: sticky;
   bottom: 0;
+}
+
+.input-form::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: radial-gradient(ellipse at center bottom, rgba(0, 0, 0, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(20px);
 }
 
 .input-container {
@@ -875,7 +888,7 @@
   flex: 1;
   padding: 12px 0;
   border: none;
-  font-size: 15px;
+  font-size: 16px;
   outline: none;
   background-color: transparent;
   color: #1f2937;
