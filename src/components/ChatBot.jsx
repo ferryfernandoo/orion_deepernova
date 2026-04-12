@@ -417,7 +417,7 @@ const ChatBot = () => {
       }
     };
 
-    const interval = setInterval(updateStreamingText, 3);
+    const interval = setInterval(updateStreamingText, 1);
     streamingIntervalRef.current = interval;
   };
 
@@ -520,14 +520,15 @@ const ChatBot = () => {
         .replace(/^---+$/gm, '')
         .replace(/^\s*[-*+]\s*$/gm, '');
       
+      // Preserve spacing for numbered lists and conclusions (multiple newlines)
       formattedText = formattedText
-        .replace(/([^\n])\n(\d+\..*)/gm, '$1\n\n\n\n$2')
-        .replace(/(\d+\.)([^\n]*)\n(?=\d+\.)/g, '$1$2\n\n\n\n');
+        .replace(/([^\n])\n(\d+\..*)/gm, '$1\n\n$2')
+        .replace(/(\d+\.)([^\n]*)\n(?=\d+\.)/g, '$1$2\n\n');
       
       return (
         <React.Fragment key={blockIdx}>
           {formattedText
-            .split('\n\n\n')
+            .split('\n\n')
             .map((paragraph, idx) => (
               <React.Fragment key={idx}>
                 {paragraph.split('\n').map((line, lineIdx) => (
