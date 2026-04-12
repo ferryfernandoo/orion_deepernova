@@ -674,25 +674,21 @@ const ChatBot = () => {
     streamingStartTimeRef.current = Date.now();
     setLoadingStatusMsg('');
     
-    // Status messages that change based on elapsed time - many options for variety
+    // Status messages that change based on elapsed time - longer intervals for believability
     // Pre-calculate random delays for consistency
     const statusMessages = [
-      { time: 3000, msg: '⏳ tunggu bentar...', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 5000, msg: '🔍 lagi baca data...', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 5500, msg: '⚡ lagi nyalakan otak...', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 6500, msg: '🧠 proses thinking...', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 8000, msg: '⏳ masih nyusun...', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 9000, msg: '💭 lagi mikir...', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 10000, msg: '🤔 hmm aku lagi nyusun sarafku', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 10500, msg: '⚙️ kalkulasi berat nih...', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 12000, msg: '📊 menganalisis patterns...', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 13000, msg: '🔗 nyambung2in info...', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 14000, msg: '💾 loading lebih banyak...', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 15000, msg: '🎯 ini aku dapet data banyak bro', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 16000, msg: '✨ tinggal finalisasi...', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 17000, msg: '🚀 hampir siap nih...', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 18000, msg: '⏱️ sebentar lagi yak...', randomDelay: (Math.random() - 0.5) * 1500 },
-      { time: 20000, msg: '🔥 nerasan koneksi lagi...', randomDelay: (Math.random() - 0.5) * 1500 },
+      { time: 2000, msg: 'membaca pertanyaan...', randomDelay: (Math.random() - 0.5) * 800 },
+      { time: 4000, msg: 'memproses konteks...', randomDelay: (Math.random() - 0.5) * 800 },
+      { time: 7000, msg: 'menganalisis informasi...', randomDelay: (Math.random() - 0.5) * 800 },
+      { time: 10000, msg: 'sedang berpikir...', randomDelay: (Math.random() - 0.5) * 800 },
+      { time: 13000, msg: 'menghitung respons...', randomDelay: (Math.random() - 0.5) * 800 },
+      { time: 16000, msg: 'menyusun jawaban...', randomDelay: (Math.random() - 0.5) * 800 },
+      { time: 19000, msg: 'memvalidasi data...', randomDelay: (Math.random() - 0.5) * 800 },
+      { time: 22000, msg: 'mengorganisir informasi...', randomDelay: (Math.random() - 0.5) * 800 },
+      { time: 25000, msg: 'menyiapkan output...', randomDelay: (Math.random() - 0.5) * 800 },
+      { time: 28000, msg: 'finalisasi respons...', randomDelay: (Math.random() - 0.5) * 800 },
+      { time: 31000, msg: 'tinggal final check...', randomDelay: (Math.random() - 0.5) * 800 },
+      { time: 34000, msg: 'hampir selesai...', randomDelay: (Math.random() - 0.5) * 800 },
     ];
     
     // Set up status update interval
@@ -806,25 +802,21 @@ const ChatBot = () => {
       streamingStartTimeRef.current = Date.now();
       setLoadingStatusMsg('');
       
-      // Status messages that change based on elapsed time - many options for variety
+      // Status messages that change based on elapsed time - longer intervals for believability
       // Pre-calculate random delays for consistency
       const retryStatusMessages = [
-        { time: 3000, msg: '⏳ tunggu bentar...', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 5000, msg: '🔍 lagi baca data...', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 5500, msg: '⚡ lagi nyalakan otak...', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 6500, msg: '🧠 proses thinking...', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 8000, msg: '⏳ masih nyusun...', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 9000, msg: '💭 lagi mikir...', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 10000, msg: '🤔 hmm aku lagi nyusun sarafku', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 10500, msg: '⚙️ kalkulasi berat nih...', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 12000, msg: '📊 menganalisis patterns...', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 13000, msg: '🔗 nyambung2in info...', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 14000, msg: '💾 loading lebih banyak...', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 15000, msg: '🎯 ini aku dapet data banyak bro', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 16000, msg: '✨ tinggal finalisasi...', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 17000, msg: '🚀 hampir siap nih...', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 18000, msg: '⏱️ sebentar lagi yak...', randomDelay: (Math.random() - 0.5) * 1500 },
-        { time: 20000, msg: '🔥 nerasan koneksi lagi...', randomDelay: (Math.random() - 0.5) * 1500 },
+        { time: 2000, msg: 'membaca pertanyaan...', randomDelay: (Math.random() - 0.5) * 800 },
+        { time: 4000, msg: 'memproses konteks...', randomDelay: (Math.random() - 0.5) * 800 },
+        { time: 7000, msg: 'menganalisis informasi...', randomDelay: (Math.random() - 0.5) * 800 },
+        { time: 10000, msg: 'sedang berpikir...', randomDelay: (Math.random() - 0.5) * 800 },
+        { time: 13000, msg: 'menghitung respons...', randomDelay: (Math.random() - 0.5) * 800 },
+        { time: 16000, msg: 'menyusun jawaban...', randomDelay: (Math.random() - 0.5) * 800 },
+        { time: 19000, msg: 'memvalidasi data...', randomDelay: (Math.random() - 0.5) * 800 },
+        { time: 22000, msg: 'mengorganisir informasi...', randomDelay: (Math.random() - 0.5) * 800 },
+        { time: 25000, msg: 'menyiapkan output...', randomDelay: (Math.random() - 0.5) * 800 },
+        { time: 28000, msg: 'finalisasi respons...', randomDelay: (Math.random() - 0.5) * 800 },
+        { time: 31000, msg: 'tinggal final check...', randomDelay: (Math.random() - 0.5) * 800 },
+        { time: 34000, msg: 'hampir selesai...', randomDelay: (Math.random() - 0.5) * 800 },
       ];
       
       // Set up status update interval
