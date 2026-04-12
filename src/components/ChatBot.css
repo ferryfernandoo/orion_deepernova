@@ -356,7 +356,7 @@
   background-color: transparent;
   border: 1px solid #f0f0f0;
   border-radius: 4px;
-  padding: 10px 12px;
+  padding: 10px 12px 10px 12px;
   margin-bottom: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -364,6 +364,7 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
+  padding-right: 36px;
 }
 
 .conversation-item:hover {
@@ -398,29 +399,37 @@
 
 .conv-delete {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
   background: none;
   border: none;
-  color: #9ca3af;
+  color: #d1d5db;
   font-size: 18px;
   cursor: pointer;
-  padding: 4px;
-  opacity: 0;
-  transition: opacity 0.2s;
+  padding: 4px 6px;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .conversation-item:hover .conv-delete {
   opacity: 1;
+  color: #f87171;
 }
 
 .conversation-item.active .conv-delete {
-  color: white;
-  opacity: 0.8;
+  color: #ef4444;
+  opacity: 0.9;
 }
 
 .conv-delete:hover {
-  color: #f87171;
+  color: #dc2626;
+  transform: translateY(-50%) scale(1.2);
+  background-color: rgba(220, 38, 38, 0.1);
+  border-radius: 4px;
 }
 
 /* Memory System Styles */
@@ -600,7 +609,7 @@
 
 .message.user {
   align-self: flex-end;
-  max-width: 60%;
+  max-width: 50%;
 }
 
 .message.bot {
@@ -615,8 +624,8 @@
 .message-content {
   padding: 0;
   border-radius: 0;
-  font-size: 16px;
-  line-height: 2.3;
+  font-size: 15px;
+  line-height: 1.8;
   word-break: break-word;
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -636,9 +645,9 @@
 .message.user .message-content {
   background-color: rgba(37, 99, 235, 0.15);
   color: white;
-  border-radius: 14px 4px 14px 14px;
+  border-radius: 12px 3px 12px 12px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  padding: 12px 15px;
+  padding: 8px 12px;
 }
 
 .message.bot .message-content {
@@ -835,7 +844,7 @@
 
 .input-container {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   width: 100%;
   position: relative;
@@ -847,6 +856,7 @@
   overflow: visible;
   padding: 8px 8px 8px 18px;
   gap: 8px;
+  min-height: 56px;
 }
 
 .input-container:focus-within {
@@ -863,6 +873,11 @@
   background-color: transparent;
   color: #1f2937;
   transition: all 0.2s ease;
+  resize: none;
+  font-family: inherit;
+  line-height: 1.5;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .message-input:focus {
