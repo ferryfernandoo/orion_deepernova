@@ -137,7 +137,7 @@ export const sendMessageToGrok = async (message, conversationHistory = [], langu
   try {
     // Build message history for context (last 10 messages for performance)
     const contextMessages = conversationHistory
-      .slice(-10)
+      .slice(-6)
       .map(msg => ({
         role: msg.sender === 'user' ? 'user' : 'assistant',
         content: msg.text,
