@@ -400,7 +400,7 @@ const ChatBot = () => {
     isPausedRef.current = false;
     setIsPaused(false);
 
-    // Function untuk update text secara increment
+    // Function untuk update text secara increment - multiple chars per tick
     const updateStreamingText = () => {
       if (charIndexRef.current <= text.length) {
         setMessages((prev) =>
@@ -410,7 +410,7 @@ const ChatBot = () => {
               : msg
           )
         );
-        charIndexRef.current++;
+        charIndexRef.current += 50; // Show 50 chars per interval (50x faster - nearly instant!)
       } else {
         // Selesai streaming
         finishStreaming(messageId);
@@ -520,11 +520,11 @@ const ChatBot = () => {
         .replace(/^---+$/gm, '')
         .replace(/^\s*[-*+]\s*$/gm, '');
       
-      // Preserve spacing for numbered lists and conclusions (multiple newlines)
+      // Preserve spacing for numbered lists and conclusions (reasonable newlines)
       formattedText = formattedText
-        .replace(/([^\n])\n(\d+\..*)/gm, '$1\n\n\n\n\n\n\n\n\n\n$2')
+        .replace(/([^\n])\n(\d+\..*)/gm, '$1\n\n\n$2')
         .replace(/(\d+\.)([^\n]*)\n(?=\d+\.)/g, '$1$2\n')
-        .replace(/(\d+\..*)\n\n(?![\d+\.])/gm, '$1\n\n\n\n\n\n\n\n\n\n');
+        .replace(/(\d+\..*)\n\n(?![\d+\.])/gm, '$1\n\n\n');
       
       return (
         <React.Fragment key={blockIdx}>
@@ -650,6 +650,10 @@ const ChatBot = () => {
     setMessages((prev) => [...prev, userMessage]);
     const placeholderId = createBotPlaceholder();
     setInputValue('');
+    // Reset textarea height to normal
+    if (globalThis.textareaRef) {
+      globalThis.textareaRef.style.height = 'auto';
+    }
     setLoading(true);
     setError(null);
     setIsScrolledUp(false); // Hide scroll button
@@ -1049,6 +1053,9 @@ const ChatBot = () => {
       <form className="input-form" onSubmit={handleSendMessage}>
         <div className="input-container">
           <textarea
+            ref={(el) => {
+              globalThis.textareaRef = el;
+            }}
             value={inputValue}
             onChange={(e) => {
               setInputValue(e.target.value);
