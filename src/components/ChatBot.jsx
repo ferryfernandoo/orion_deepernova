@@ -23,9 +23,12 @@ const ChatBot = () => {
   const [isPrivateChat, setIsPrivateChat] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
+  const [loadingStatusMsg, setLoadingStatusMsg] = useState('');
   const retryIntervalRef = useRef(null);
   const messagesEndRef = useRef(null);
   const streamingIntervalRef = useRef(null);
+  const streamingStartTimeRef = useRef(null);
+  const statusUpdateIntervalRef = useRef(null);
   const isPausedRef = useRef(false);
   const currentMessageIdRef = useRef(null);
   const currentTextRef = useRef('');
@@ -400,6 +403,40 @@ const ChatBot = () => {
     isPausedRef.current = false;
     setIsPaused(false);
 
+    // Start tracking time for status messages
+    streamingStartTimeRef.current = Date.now();
+    setLoadingStatusMsg('');
+
+    // Status messages that change based on elapsed time
+    const statusMessages = [
+      { time: 5000, msg: 'tunggu bre lagi baca data' },
+      { time: 10000, msg: 'hmm aku lagi nyusun sarafku' },
+      { time: 15000, msg: 'ini aku dapet data banyak bro bentar lagi yak' },
+    ];
+
+    // Set up status update interval
+    if (statusUpdateIntervalRef.current) {
+      clearInterval(statusUpdateIntervalRef.current);
+    }
+
+    statusUpdateIntervalRef.current = setInterval(() => {
+      if (streamingStartTimeRef.current) {
+        const elapsed = Date.now() - streamingStartTimeRef.current;
+        let matchedMsg = '';
+        
+        for (let i = statusMessages.length - 1; i >= 0; i--) {
+          // Add random delay (±1000ms) for natural feel
+          const randomDelay = (Math.random() - 0.5) * 2000;
+          if (elapsed > statusMessages[i].time + randomDelay) {
+            matchedMsg = statusMessages[i].msg;
+            break;
+          }
+        }
+        
+        setLoadingStatusMsg(matchedMsg);
+      }
+    }, 500); // Check every 500ms for smooth updates
+
     // Function untuk update text secara increment - multiple chars per tick
     const updateStreamingText = () => {
       if (charIndexRef.current <= text.length) {
@@ -410,7 +447,7 @@ const ChatBot = () => {
               : msg
           )
         );
-        charIndexRef.current += 15; // Show 25 chars per interval - balanced speed & visibility
+        charIndexRef.current += 25; // Show 25 chars per interval - balanced speed & visibility
       } else {
         // Selesai streaming
         finishStreaming(messageId);
@@ -427,12 +464,18 @@ const ChatBot = () => {
       clearInterval(streamingIntervalRef.current);
       streamingIntervalRef.current = null;
     }
+    if (statusUpdateIntervalRef.current) {
+      clearInterval(statusUpdateIntervalRef.current);
+      statusUpdateIntervalRef.current = null;
+    }
     setMessages((prev) =>
       prev.map((msg) =>
         msg.id === messageId ? { ...msg, isStreaming: false } : msg
       )
     );
     setAnimatingMessages((prev) => ({ ...prev, [messageId]: false }));
+    setLoadingStatusMsg('');
+    streamingStartTimeRef.current = null;
     isPausedRef.current = false;
     setIsPaused(false);
     setLoading(false);
@@ -448,6 +491,10 @@ const ChatBot = () => {
     if (streamingIntervalRef.current) {
       clearInterval(streamingIntervalRef.current);
       streamingIntervalRef.current = null;
+    }
+    if (statusUpdateIntervalRef.current) {
+      clearInterval(statusUpdateIntervalRef.current);
+      statusUpdateIntervalRef.current = null;
     }
     
     // Finish the current streaming message
@@ -465,6 +512,8 @@ const ChatBot = () => {
       }));
     }
     
+    setLoadingStatusMsg('');
+    streamingStartTimeRef.current = null;
     isPausedRef.current = false;
     setIsPaused(false);
     setLoading(false);
@@ -1001,6 +1050,9 @@ const ChatBot = () => {
                 <span></span>
                 <span></span>
               </div>
+              {loadingStatusMsg && (
+                <span className="loading-status-text">{loadingStatusMsg}</span>
+              )}
             </div>
           </div>
         )}
