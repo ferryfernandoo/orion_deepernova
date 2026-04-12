@@ -4,9 +4,49 @@ import { memoryService } from './memoryService.js';
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
 const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
 
+// Helper function untuk mendapatkan waktu real-time saat ini
+const getCurrentDateTime = () => {
+  const now = new Date();
+  
+  // Format Indonesia
+  const daysId = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const monthsId = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  
+  const dayId = daysId[now.getDay()];
+  const dateId = now.getDate();
+  const monthId = monthsId[now.getMonth()];
+  const yearId = now.getFullYear();
+  
+  const hoursId = String(now.getHours()).padStart(2, '0');
+  const minutesId = String(now.getMinutes()).padStart(2, '0');
+  const secondsId = String(now.getSeconds()).padStart(2, '0');
+  
+  const indonesianTime = `${dayId}, ${dateId} ${monthId} ${yearId} - ${hoursId}:${minutesId}:${secondsId}`;
+  
+  // Format English
+  const daysEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const monthsEn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  
+  const dayEn = daysEn[now.getDay()];
+  const dateEn = now.getDate();
+  const monthEn = monthsEn[now.getMonth()];
+  const yearEn = now.getFullYear();
+  
+  const hoursEn = String(now.getHours()).padStart(2, '0');
+  const minutesEn = String(now.getMinutes()).padStart(2, '0');
+  const secondsEn = String(now.getSeconds()).padStart(2, '0');
+  
+  const englishTime = `${dayEn}, ${dateEn} ${monthEn} ${yearEn} - ${hoursEn}:${minutesEn}:${secondsEn}`;
+  
+  return { indonesianTime, englishTime };
+};
+
 // Multilingual system prompts
 const SYSTEM_PROMPTS = {
   id: `Anda adalah Orion AI.
+
+INFORMASI WAKTU SAAT INI:
+[CURRENT_TIME_ID]
 
 IDENTITAS:
 - Jika ditanya siapa: "Saya Orion AI, model deepernova_id1_, 912 miliar parameter"
@@ -53,6 +93,9 @@ CONSTRAINT:
 - Fokus pada clarity, information density, dan usability`,
 
   en: `You are Orion AI.
+
+CURRENT TIME INFORMATION:
+[CURRENT_TIME_EN]
 
 IDENTITY:
 - If asked who you are: "I'm Orion AI, model deepernova_id1_, 912 billion parameters"
@@ -110,7 +153,16 @@ const buildContextualPrompt = (messages, language = 'id', currentMessage = '', c
     })
     .join('\n');
 
-  const systemPrompt = SYSTEM_PROMPTS[language] || SYSTEM_PROMPTS.id;
+  // Get current time information
+  const { indonesianTime, englishTime } = getCurrentDateTime();
+  let systemPrompt = SYSTEM_PROMPTS[language] || SYSTEM_PROMPTS.id;
+  
+  // Replace time placeholder with actual current time
+  if (language === 'id') {
+    systemPrompt = systemPrompt.replace('[CURRENT_TIME_ID]', indonesianTime);
+  } else {
+    systemPrompt = systemPrompt.replace('[CURRENT_TIME_EN]', englishTime);
+  }
   
   // Retrieve relevant memories from cross-room conversations
   let memoryContext = '';
