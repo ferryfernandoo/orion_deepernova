@@ -410,7 +410,7 @@ const ChatBot = () => {
               : msg
           )
         );
-        charIndexRef.current += 50; // Show 50 chars per interval (50x faster - nearly instant!)
+        charIndexRef.current += 25; // Show 25 chars per interval (25x faster - very fast but visible)
       } else {
         // Selesai streaming
         finishStreaming(messageId);
