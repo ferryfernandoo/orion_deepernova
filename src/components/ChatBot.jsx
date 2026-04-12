@@ -33,6 +33,22 @@ const ChatBot = () => {
   const holdScrollRef = useRef(false);
   const programmaticScrollRef = useRef(false);
 
+  const resetLocalStorageData = () => {
+    const keysToClear = [
+      'chatbot_conversations',
+      'orion_memory_system',
+      'orion_message_feedback',
+      'orion_chat_branches',
+    ];
+    keysToClear.forEach((key) => {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        console.error(`Failed to remove ${key}:`, e);
+      }
+    });
+  };
+
   // Load conversations from localStorage on mount
   useEffect(() => {
     try {
@@ -44,27 +60,35 @@ const ChatBot = () => {
             // Validate each conversation has required fields
             const validConvs = convs.filter(c => c && c.id && c.messages !== undefined);
             if (validConvs.length > 0) {
-              setConversations(validConvs);
-              setCurrentConversationId(validConvs[0].id);
-              setMessages(Array.isArray(validConvs[0].messages) ? validConvs[0].messages : []);
+              const normalizedConvs = validConvs.map((conv) => ({
+                ...conv,
+                messages: Array.isArray(conv.messages)
+                  ? conv.messages.map((msg) => ({
+                      ...msg,
+                      timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+                    }))
+                  : [],
+              }));
+              setConversations(normalizedConvs);
+              setCurrentConversationId(normalizedConvs[0].id);
+              setMessages(normalizedConvs[0].messages);
               return;
             }
           }
         } catch (parseErr) {
           console.error('JSON parse error:', parseErr);
-          // Data is corrupt, delete and start fresh
-          localStorage.removeItem('chatbot_conversations');
+          // Data is corrupt, delete relevant storage and start fresh
+          resetLocalStorageData();
         }
       }
       // Fallback: create new conversation if nothing valid found or load failed
       createNewConversation();
     } catch (err) {
       console.error('Error loading conversations:', err);
-      // Last resort: clear and create new
       try {
-        localStorage.clear();
+        resetLocalStorageData();
       } catch (e) {
-        console.error('Could not clear localStorage:', e);
+        console.error('Could not reset localStorage:', e);
       }
       createNewConversation();
     }
@@ -921,7 +945,7 @@ const ChatBot = () => {
                 )}
               </div>
               <span className="message-time">
-                {msg.timestamp.toLocaleTimeString()}
+                {new Date(msg.timestamp).toLocaleTimeString()}
               </span>
             </div>
           );
@@ -1011,3 +1035,4 @@ const ChatBot = () => {
 };
 
 export default ChatBot;
+
