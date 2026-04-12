@@ -293,12 +293,16 @@ const ChatBot = () => {
     if (convMessages.length < 2) return; // Need at least user msg + bot response
 
     try {
-      const userMsg = convMessages.find((m) => m.sender === 'user')?.text || '';
-      if (!userMsg) return;
+      // Build conversation context (last 3 exchanges for a better title)
+      const userMessages = convMessages.filter((m) => m.sender === 'user');
+      const contextMessages = convMessages.slice(-6).map((m) => {
+        const prefix = m.sender === 'user' ? 'User' : 'AI';
+        return `${prefix}: ${m.text.substring(0, 80)}`;
+      }).join('\n');
 
       const titlePrompt = userLanguage === 'en' 
-        ? `Generate a SHORT (2-3 words max) memorable chat title in English for this conversation:\nUser: "${userMsg}"\n\nRespond ONLY with the title, nothing else. No quotes, no explanation.`
-        : `Generate a SHORT (2-3 words max) memorable chat title in Indonesian for this conversation:\nUser: "${userMsg}"\n\nRespond ONLY with the title, nothing else. No quotes, no explanation.`;
+        ? `Generate a SHORT (2-4 words max) memorable chat title in English for this conversation:\n\n${contextMessages}\n\nRespond ONLY with the title, nothing else. No quotes, no explanation.`
+        : `Generate a SHORT (2-4 words max) memorable chat title in Indonesian for this conversation:\n\n${contextMessages}\n\nRespond ONLY with the title, nothing else. No quotes, no explanation.`;
 
       const response = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
@@ -613,6 +617,12 @@ const ChatBot = () => {
       if (messages.length === 1) {
         updateConversationTitle(currentConversationId, messages);
       }
+      // Regenerate AI title every 4 messages (every 2 exchanges) for dynamic titles
+      if (messages.length >= 2 && messages.length % 4 === 0) {
+        setTimeout(() => {
+          generateChatTitle(currentConversationId);
+        }, 300);
+      }
     }
   }, [messages]);
 
@@ -720,7 +730,6 @@ const ChatBot = () => {
     setRetryCountdown(null);
     
     if (lastMessage) {
-      setInputValue(lastMessage);
       setError(null);
       setLastMessage(null);
       setLoading(true);
@@ -1037,13 +1046,19 @@ const ChatBot = () => {
 
       <form className="input-form" onSubmit={handleSendMessage}>
         <div className="input-container">
-          <input
-            type="text"
+          <textarea
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              // Auto-resize textarea
+              const textarea = e.target;
+              textarea.style.height = 'auto';
+              textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+            }}
             placeholder={messages.length === 0 ? "Mengobrol dengan Orion..." : "Balas Orion..."}
             disabled={loading}
             className="message-input"
+            rows="1"
           />
           <button 
             type={loading ? "button" : "submit"}
