@@ -1292,20 +1292,6 @@
   transform: translateY(-2px);
 }
 
-/* Pulsing shadow effect when typing */
-.input-container.typing {
-  animation: shadowPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes shadowPulse {
-  0%, 100% {
-    box-shadow: 0 12px 32px rgba(255, 127, 80, 0.2), 0 4px 12px rgba(255, 127, 80, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.8);
-  }
-  50% {
-    box-shadow: 0 12px 40px rgba(255, 127, 80, 0.35), 0 4px 16px rgba(255, 127, 80, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.8), 0 0px 20px rgba(251, 146, 60, 0.3);
-  }
-}
-
 .message-input {
   flex: 1;
   padding: 12px 0;
@@ -1336,6 +1322,23 @@
 
 .message-input::placeholder {
   color: #9ca3af;
+}
+
+/* AI thinking animation - pulsing shadow effect */
+@keyframes thinkingPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(251, 146, 60, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 146, 60, 0);
+  }
+}
+
+.message-input.ai-thinking {
+  animation: thinkingPulse 1.5s ease-in-out infinite;
 }
 
 /* Action button base styles */
@@ -1489,7 +1492,7 @@
 /* Show previous messages button */
 .show-previous-btn {
   position: fixed;
-  bottom: 85px;
+  bottom: 115px;
   right: 32px;
   padding: 10px 16px;
   background: linear-gradient(135deg, #ffb86b 0%, #fb923c 100%);
