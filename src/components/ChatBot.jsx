@@ -1548,7 +1548,7 @@ const ChatBot = () => {
 
         <div ref={messagesEndRef} />
         
-        {compactView && messages.length > 1 && (
+        {compactView && messages.length > 1 && !inputValue.trim() && (
           <button 
             className="show-previous-btn"
             onClick={handleShowPreviousMessages}
@@ -1602,7 +1602,7 @@ const ChatBot = () => {
       )}
 
       <form className="input-form" onSubmit={handleSendMessage}>
-        <div className="input-container">
+        <div className={`input-container ${inputValue.trim() ? 'typing' : ''}`}>
           <textarea
             ref={(el) => {
               globalThis.textareaRef = el;
