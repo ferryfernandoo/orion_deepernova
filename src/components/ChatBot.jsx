@@ -1617,7 +1617,7 @@ const ChatBot = () => {
             }}
             placeholder={messages.length === 0 ? "Mengobrol dengan Orion..." : "Balas Orion..."}
             disabled={loading}
-            className={`message-input ${loading ? 'ai-thinking' : ''}`}
+            className="message-input"
             rows="1"
           />
           <button 
