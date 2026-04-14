@@ -1076,7 +1076,7 @@ const ChatBot = () => {
               onClick={() => setShowPrivateModal(true)}
               title="Start private chat (not saved)"
             >
-              🔒
+             private chat
             </button>
             <button
               className="sidebar-toggle"
