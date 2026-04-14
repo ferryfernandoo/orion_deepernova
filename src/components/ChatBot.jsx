@@ -348,10 +348,41 @@ const ChatBot = () => {
 
     messagesContainer.addEventListener('scroll', handleScroll);
     messagesContainer.addEventListener('wheel', handleWheel, { passive: true });
+    
+    // Triple-click to jump to bottom
+    const handleTripleClick = () => {
+      scrollToBottom(true);
+    };
+    messagesContainer.addEventListener('triple-click', handleTripleClick);
+    
+    // Custom triple-click detection using click events (more reliable than mousedown)
+    let clickCount = 0;
+    let clickTimer = null;
+    const handleClick = (e) => {
+      clickCount++;
+      
+      if (clickCount === 1) {
+        // Start timer for triple-click window
+        clickTimer = setTimeout(() => {
+          clickCount = 0;
+        }, 300);
+      }
+      
+      if (clickCount === 3) {
+        e.preventDefault();
+        clearTimeout(clickTimer);
+        clickCount = 0;
+        scrollToBottom(true);
+      }
+    };
+    messagesContainer.addEventListener('click', handleClick);
+    
     return () => {
       try {
         messagesContainer.removeEventListener('scroll', handleScroll);
         messagesContainer.removeEventListener('wheel', handleWheel);
+        messagesContainer.removeEventListener('triple-click', handleTripleClick);
+        messagesContainer.removeEventListener('mousedown', handleMouseDown);
       } catch (err) {
         console.log('Remove scroll listener error:', err);
       }
@@ -403,6 +434,11 @@ const ChatBot = () => {
       setMessages(conv.messages);
       setError(null);
       setCompactView(true);
+      
+      // Auto-scroll to bottom when opening/switching to a room
+      setTimeout(() => {
+        scrollToBottom(true);
+      }, 100);
     }
   };
 
