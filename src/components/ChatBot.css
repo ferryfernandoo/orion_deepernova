@@ -1327,18 +1327,19 @@
 /* AI thinking animation - pulsing shadow effect */
 @keyframes thinkingPulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.3);
+    box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.6), 0 0 0 6px rgba(251, 146, 60, 0.4);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(251, 146, 60, 0);
+    box-shadow: 0 0 0 6px rgba(251, 146, 60, 0.4), 0 0 0 12px rgba(251, 146, 60, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(251, 146, 60, 0);
+    box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.6), 0 0 0 6px rgba(251, 146, 60, 0.4);
   }
 }
 
 .message-input.ai-thinking {
-  animation: thinkingPulse 1.5s ease-in-out infinite;
+  animation: thinkingPulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.6), 0 0 0 6px rgba(251, 146, 60, 0.4);
 }
 
 /* Action button base styles */
