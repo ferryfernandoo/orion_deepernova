@@ -1602,7 +1602,7 @@ const ChatBot = () => {
       )}
 
       <form className="input-form" onSubmit={handleSendMessage}>
-        <div className={`input-container ${inputValue.trim() ? 'typing' : ''}`}>
+        <div className="input-container">
           <textarea
             ref={(el) => {
               globalThis.textareaRef = el;
@@ -1617,7 +1617,7 @@ const ChatBot = () => {
             }}
             placeholder={messages.length === 0 ? "Mengobrol dengan Orion..." : "Balas Orion..."}
             disabled={loading}
-            className="message-input"
+            className={`message-input ${loading ? 'ai-thinking' : ''}`}
             rows="1"
           />
           <button 
