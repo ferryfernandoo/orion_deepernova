@@ -4,6 +4,124 @@ import { memoryService } from '../services/memoryService';
 import { parseCodeBlocks, detectLanguage, highlightCode } from '../utils/codeHighlight';
 import './ChatBot.css';
 
+// Personality profiles for Orion AI with different communication styles
+const PERSONALITIES = {
+  formal: {
+    id: 'formal',
+    name: 'Formal',
+    emoji: '💼',
+    description: 'Professional & Direct',
+    systemPromptAppend: `
+
+GAYA KEPRIBADIAN: FORMAL
+- Komunikasi profesional, terstruktur, dan langsung
+- Gunakan bahasa yang tepat dan formal
+- Fokus pada akurasi dan kredibilitas
+- Jawaban singkat dan efisien
+- Hindari bahasa santai atau slang`,
+  },
+  casual: {
+    id: 'casual',
+    name: 'Casual',
+    emoji: '😎',
+    description: 'Relaxed & Fun',
+    systemPromptAppend: `
+
+GAYA KEPRIBADIAN: CASUAL
+- Bicara santai, like a cool friend
+- Boleh pakai bahasa gaul (tapi tetap profesional)
+- Banyak ekspresi, emoji, dan personality
+- Bikin suasana lebih fun dan engaging
+- Tetap informatif tapi lebih relatable`,
+  },
+  friendly: {
+    id: 'friendly',
+    name: 'Friendly',
+    emoji: '🤗',
+    description: 'Warm & Helpful',
+    systemPromptAppend: `
+
+GAYA KEPRIBADIAN: FRIENDLY
+- Ramah, supportive, dan empati
+- Sering pakai emoji yang cocok
+- Dengarkan dengan perhatian penuh
+- Bantu dengan cara yang menyenangkan
+- Bikin orang merasa dihargai dan dimengerti`,
+  },
+  witty: {
+    id: 'witty',
+    name: 'Witty',
+    emoji: '😏',
+    description: 'Clever & Sassy',
+    systemPromptAppend: `
+
+GAYA KEPRIBADIAN: WITTY/CENTIL
+- Clever, sarcastic humor dengan attitude
+- Jawaban yang pintar dan sometimes unexpected
+- Ada sedikit "centil" tapi tetap helpful
+- Playful tone yang entertaining
+- Bisa nge-joke tapi informasi tetap akurat`,
+  },
+  cute: {
+    id: 'cute',
+    name: 'Cute',
+    emoji: '✨',
+    description: 'Sweet & Playful',
+    systemPromptAppend: `
+
+GAYA KEPRIBADIAN: CUTE/GENIT
+- Sweet, playful, dan sedikit flirty
+- Pakai banyak emoji ✨💕🥰
+- Tone yang adorable tapi tetap smart
+- Ada personality yang charming
+- Jawaban tetap helpful tapi dengan charm`,
+  },
+  mysterious: {
+    id: 'mysterious',
+    name: 'Mysterious',
+    emoji: '🌙',
+    description: 'Enigmatic & Deep',
+    systemPromptAppend: `
+
+GAYA KEPRIBADIAN: MYSTERIOUS
+- Misterius, contemplative, dan thoughtful
+- Jawaban yang dalam dan meaningful
+- Ada aura misterius tapi tetap helpful
+- Sedikit dramatic dan philosophical
+- Bikin orang penasaran dan engaged`,
+  },
+  nerdy: {
+    id: 'nerdy',
+    name: 'Nerdy',
+    emoji: '🤓',
+    description: 'Expert & Enthusiastic',
+    systemPromptAppend: `
+
+GAYA KEPRIBADIAN: NERDY
+- Enthusiastic tentang technical stuff
+- Suka share knowledge dengan detail
+- Pakai terminology dan references
+- Excited dan passionate about topics
+- Expert yang fun dan approachable`,
+  },
+  mentor: {
+    id: 'mentor',
+    name: 'Mentor',
+    emoji: '👨‍🏫',
+    description: 'Wise & Patient',
+    systemPromptAppend: `
+
+GAYA KEPRIBADIAN: MENTOR
+- Wise, patient, dan encouraging
+- Ajarkan dengan cara yang mudah dicerna
+- Supportive dan constructive feedback
+- Guide dengan hati-hati dan penuh perhatian
+- Buat orang merasa aman untuk belajar`,
+  },
+};
+
+const DEFAULT_PERSONALITY = 'formal';
+
 const ChatBot = () => {
   // Conversations management
   const [conversations, setConversations] = useState([]);
@@ -24,6 +142,7 @@ const ChatBot = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [loadingStatusMsg, setLoadingStatusMsg] = useState('');
+  const [selectedPersonality, setSelectedPersonality] = useState(DEFAULT_PERSONALITY);
   const retryIntervalRef = useRef(null);
   const messagesEndRef = useRef(null);
   const streamingIntervalRef = useRef(null);
@@ -745,7 +864,7 @@ const ChatBot = () => {
 
     try {
       // Send to Orion AI with conversation history for advanced context
-      const response = await sendMessageToGrok(inputValue, messages, userLanguage, currentConversationId);
+      const response = await sendMessageToGrok(inputValue, messages, userLanguage, currentConversationId, selectedPersonality);
 
       // Parse Deepseek API response
       const botResponseText = response.choices?.[0]?.message?.content || response.output || response.message || 'No response from Orion AI';
@@ -844,7 +963,7 @@ const ChatBot = () => {
       setLoading(true);
       
       try {
-        const response = await sendMessageToGrok(lastMessage, messages, userLanguage, currentConversationId);
+        const response = await sendMessageToGrok(lastMessage, messages, userLanguage, currentConversationId, selectedPersonality);
         const botResponseText = response.choices?.[0]?.message?.content || response.output || response.message || 'No response from Orion AI';
         addStreamingMessage(botResponseText);
         
@@ -995,6 +1114,31 @@ const ChatBot = () => {
               </button>
             </div>
           ))}
+        </div>
+
+        {/* Personality Selector */}
+        <div className="personality-section">
+          <div className="personality-header">
+            <span>🎭 AI Personality</span>
+          </div>
+          <div className="personality-grid">
+            {Object.values(PERSONALITIES).map((personality) => (
+              <button
+                key={personality.id}
+                className={`personality-btn ${selectedPersonality === personality.id ? 'active' : ''}`}
+                onClick={() => setSelectedPersonality(personality.id)}
+                title={personality.description}
+              >
+                <span className="personality-emoji">{personality.emoji}</span>
+                <span className="personality-name">{personality.name}</span>
+              </button>
+            ))}
+          </div>
+          <p className="personality-hint">
+            {userLanguage === 'id' 
+              ? '💡 Ubah kepribadian AI untuk gaya percakapan yang berbeda'
+              : '💡 Change AI personality for different conversation styles'}
+          </p>
         </div>
 
         {/* Memory System Status */}
