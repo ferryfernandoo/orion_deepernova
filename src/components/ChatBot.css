@@ -326,19 +326,23 @@
   display: none;
 }
 
-/* Area chat lebih lebar - kurangi padding horizontal */
+/* Area chat lebih lebar + efek ruang kosong saat menunggu jawaban */
 .messages-container {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 16px 20px 16px;  /* padding kiri-kanan lebih kecil */
+  padding: 24px 16px 20px 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   scroll-behavior: smooth;
+  /* Pastikan scroll tidak terhalang anchor */
+  overflow-anchor: none;
 }
 
+/* Ruang kosong besar saat AI sedang memproses */
 .messages-container.prefill-space {
-  padding-bottom: 40vh;
+  padding-bottom: 60vh; /* lebih besar agar jelas ada ruang kosong */
+  transition: padding-bottom 0.2s ease;
 }
 
 .welcome-message {
@@ -363,7 +367,7 @@
   font-size: 15px;
 }
 
-/* Messages - BOT tidak memiliki background abu-abu, hanya teks hitam */
+/* Messages - BOT tidak memiliki background abu-abu */
 .message {
   display: flex;
   flex-direction: column;
@@ -383,7 +387,7 @@
 
 .message.user {
   align-self: flex-end;
-  max-width: 80%;  /* lebih lebar untuk user */
+  max-width: 80%;
 }
 
 .message.bot {
@@ -407,7 +411,7 @@
   box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-/* Pesan BOT: tidak ada background, hanya teks gelap, tanpa border radius kotak */
+/* Pesan BOT: tidak ada background, teks hitam polos */
 .message.bot .message-content {
   background: transparent;
   color: #1f2937;
@@ -429,7 +433,7 @@
   display: none;
 }
 
-/* Code blocks - tetap seperti sebelumnya */
+/* Code blocks */
 .code-block-container {
   margin: 12px 0;
   background: #0f172a;
