@@ -243,65 +243,165 @@ const buildContextualPrompt = (messages, language = 'id', currentMessage = '', c
   return finalPrompt;
 };
 
-export const sendMessageToGrok = async (message, conversationHistory = [], language = 'id', conversationId = null, personality = DEFAULT_PERSONALITY, abortController = null) => {
-  try {
-    // Build message history for context (last 10 messages for performance)
-    const contextMessages = conversationHistory
-      .slice(-6)
-      .map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'assistant',
-        content: msg.text,
-      }));
-
-    const response = await fetch(DEEPSEEK_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-      },
-      signal: abortController?.signal,
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          {
-            role: 'system',
-            content: buildContextualPrompt(conversationHistory, language, message, conversationId, personality),
-          },
-          ...contextMessages,
-          {
-            role: 'user',
-            content: message,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 8192,
-        stream: true, // Enable streaming
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
-    }
-
-    // Return the readable stream for streaming processing
-    return response;
-  } catch (error) {
-    console.error('Orion AI Error:', error);
-    throw error;
-  }
+// Retry configuration for streaming resilience
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  initialDelayMs: 1000,
+  maxDelayMs: 10000,
+  backoffMultiplier: 2,
 };
 
-// Helper function to process streaming response
+// Timeout configuration  
+const TIMEOUT_CONFIG = {
+  fetchTimeoutMs: 30000, // 30 seconds for initial fetch
+  streamReadTimeoutMs: 60000, // 60 seconds for stream reading
+  connectionIdleTimeoutMs: 15000, // 15 seconds of no data = timeout
+};
+
+// Exponential backoff retry helper
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const calculateBackoffDelay = (retryCount, initialDelay = RETRY_CONFIG.initialDelayMs, multiplier = RETRY_CONFIG.backoffMultiplier) => {
+  const delay = initialDelay * Math.pow(multiplier, retryCount);
+  const jitter = Math.random() * delay * 0.1; // Add 10% jitter to prevent thundering herd
+  return Math.min(delay + jitter, RETRY_CONFIG.maxDelayMs);
+};
+
+// Fetch with timeout
+const fetchWithTimeout = (url, options, timeoutMs) => {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Fetch timeout')), timeoutMs)
+    ),
+  ]);
+};
+
+export const sendMessageToGrok = async (message, conversationHistory = [], language = 'id', conversationId = null, personality = DEFAULT_PERSONALITY, abortController = null) => {
+  let lastError = null;
+  
+  for (let retryCount = 0; retryCount <= RETRY_CONFIG.maxRetries; retryCount++) {
+    try {
+      // Build message history for context (last 10 messages for performance)
+      const contextMessages = conversationHistory
+        .slice(-6)
+        .map(msg => ({
+          role: msg.sender === 'user' ? 'user' : 'assistant',
+          content: msg.text,
+        }));
+
+      // Check if we should retry
+      if (retryCount > 0) {
+        const backoffDelay = calculateBackoffDelay(retryCount - 1);
+        console.log(`Retrying API request (attempt ${retryCount + 1}/${RETRY_CONFIG.maxRetries + 1}) after ${Math.round(backoffDelay)}ms...`);
+        await sleep(backoffDelay);
+      }
+
+      // Make request with timeout
+      const response = await fetchWithTimeout(
+        DEEPSEEK_API_URL,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+          },
+          signal: abortController?.signal,
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+              {
+                role: 'system',
+                content: buildContextualPrompt(conversationHistory, language, message, conversationId, personality),
+              },
+              ...contextMessages,
+              {
+                role: 'user',
+                content: message,
+              },
+            ],
+            temperature: 0.7,
+            max_tokens: 8192,
+            stream: true, // Enable streaming
+          }),
+        },
+        TIMEOUT_CONFIG.fetchTimeoutMs
+      );
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+
+      // Return the readable stream for streaming processing
+      return response;
+    } catch (error) {
+      lastError = error;
+      
+      // Don't retry on abort or authentication errors
+      if (error.name === 'AbortError' || error.message.includes('401') || error.message.includes('403')) {
+        console.error('Orion AI Error (no retry):', error.message);
+        throw error;
+      }
+
+      // If this was the last retry, throw the error
+      if (retryCount === RETRY_CONFIG.maxRetries) {
+        console.error(`Orion AI Error after ${RETRY_CONFIG.maxRetries + 1} attempts:`, lastError.message);
+        throw new Error(`Unable to reach Orion AI after ${RETRY_CONFIG.maxRetries + 1} attempts: ${lastError.message}`);
+      }
+    }
+  }
+  
+  throw lastError || new Error('Unknown error');
+};
+
+// Helper function to process streaming response with timeout and connection monitoring
 export const processStreamingResponse = async (response, onChunk, abortSignal = null) => {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let fullText = '';
   let buffer = ''; // Buffer untuk handle incomplete lines
+  let lastDataReceivedTime = Date.now();
+  let streamTimeout = null;
   
+  // Helper to set connection idle timeout
+  const resetIdleTimeout = () => {
+    if (streamTimeout) clearTimeout(streamTimeout);
+    streamTimeout = setTimeout(() => {
+      reader.cancel('Connection idle timeout - no data received');
+    }, TIMEOUT_CONFIG.connectionIdleTimeoutMs);
+  };
+
+  // Helper to clear the timeout
+  const clearIdleTimeout = () => {
+    if (streamTimeout) {
+      clearTimeout(streamTimeout);
+      streamTimeout = null;
+    }
+  };
+
   try {
+    resetIdleTimeout(); // Start monitoring connection
+    
+    const readDeadline = Date.now() + TIMEOUT_CONFIG.streamReadTimeoutMs;
+    
     while (true) {
-      if (abortSignal?.aborted) break;
+      if (abortSignal?.aborted) {
+        clearIdleTimeout();
+        break;
+      }
+
+      // Check for overall stream timeout
+      if (Date.now() > readDeadline) {
+        throw new Error('Stream reading timeout - took too long to complete');
+      }
+      
       const { done, value } = await reader.read();
+      
+      if (value) {
+        lastDataReceivedTime = Date.now();
+        resetIdleTimeout(); // Reset idle timeout when we receive data
+      }
+      
       if (done) break;
       
       const chunk = decoder.decode(value, { stream: true });
@@ -315,7 +415,7 @@ export const processStreamingResponse = async (response, onChunk, abortSignal = 
       for (const line of lines) {
         const trimmedLine = line.trim();
         if (trimmedLine.startsWith('data: ')) {
-          const data = trimmedLine.slice(6); // Tidak perlu .trim() lagi
+          const data = trimmedLine.slice(6);
           if (data === '[DONE]') continue;
           
           try {
@@ -326,7 +426,8 @@ export const processStreamingResponse = async (response, onChunk, abortSignal = 
               onChunk(content); // Call callback for each chunk
             }
           } catch (e) {
-            // Ignore parse errors for incomplete JSON
+            // Ignore parse errors for incomplete JSON - might complete in next chunk
+            console.debug('JSON parse error (expected for streaming):', e.message);
           }
         }
       }
@@ -346,17 +447,27 @@ export const processStreamingResponse = async (response, onChunk, abortSignal = 
               onChunk(content);
             }
           } catch (e) {
-            // Ignore
+            console.debug('Final JSON parse error:', e.message);
           }
         }
       }
     }
   } catch (err) {
+    clearIdleTimeout();
+    
     if (abortSignal?.aborted && err.name === 'AbortError') {
+      console.log('Stream reading aborted by user');
       return fullText;
     }
+    
+    // Re-throw with more context
+    if (err.message.includes('timeout') || err.message.includes('idle')) {
+      throw new Error(`Connection lost during streaming: ${err.message}`);
+    }
+    
     throw err;
   } finally {
+    clearIdleTimeout();
     reader.releaseLock();
   }
   
