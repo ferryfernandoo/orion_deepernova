@@ -1292,6 +1292,20 @@
   transform: translateY(-2px);
 }
 
+/* Pulsing shadow effect when typing */
+.input-container.typing {
+  animation: shadowPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes shadowPulse {
+  0%, 100% {
+    box-shadow: 0 12px 32px rgba(255, 127, 80, 0.2), 0 4px 12px rgba(255, 127, 80, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.8);
+  }
+  50% {
+    box-shadow: 0 12px 40px rgba(255, 127, 80, 0.35), 0 4px 16px rgba(255, 127, 80, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.8), 0 0px 20px rgba(251, 146, 60, 0.3);
+  }
+}
+
 .message-input {
   flex: 1;
   padding: 12px 0;
@@ -1475,17 +1489,17 @@
 /* Show previous messages button */
 .show-previous-btn {
   position: fixed;
-  bottom: 160px;
+  bottom: 85px;
   right: 32px;
   padding: 10px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, #ffb86b 0%, #fb923c 100%);
+  color: #2b1a12;
   border: none;
   border-radius: 24px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(251, 146, 60, 0.3);
   transition: all 0.3s ease;
   z-index: 100;
   animation: slideUpIn 0.3s ease-out;
@@ -1493,9 +1507,13 @@
 }
 
 .show-previous-btn:hover {
-  background: linear-gradient(135deg, #7c8ff5 0%, #8b5fbf 100%);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  background: linear-gradient(135deg, #ffd19a 0%, #fb923c 100%);
+  box-shadow: 0 6px 16px rgba(251, 146, 60, 0.4);
   transform: translateY(-2px);
+}
+
+.show-previous-btn:active {
+  transform: translateY(0px);
 }
 
 .show-previous-btn:active {
