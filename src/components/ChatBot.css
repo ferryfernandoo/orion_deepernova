@@ -326,7 +326,7 @@
   display: none;
 }
 
-/* Area chat lebih lebar + efek ruang kosong saat menunggu jawaban */
+/* Area chat lebih lebar + ruang kosong sangat luas saat menunggu AI */
 .messages-container {
   flex: 1;
   overflow-y: auto;
@@ -335,13 +335,12 @@
   flex-direction: column;
   gap: 16px;
   scroll-behavior: smooth;
-  /* Pastikan scroll tidak terhalang anchor */
   overflow-anchor: none;
 }
 
-/* Ruang kosong besar saat AI sedang memproses */
+/* Ruang kosong besar agar bisa melihat AI mengetik */
 .messages-container.prefill-space {
-  padding-bottom: 60vh; /* lebih besar agar jelas ada ruang kosong */
+  padding-bottom: 80vh; /* diperbesar dari 60vh menjadi 80vh */
   transition: padding-bottom 0.2s ease;
 }
 
