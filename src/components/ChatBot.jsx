@@ -168,6 +168,9 @@ const ChatBot = () => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [tokensUsed, setTokensUsed] = useState(0); // Global token counter across ALL rooms combined
   const [uploadedFiles, setUploadedFiles] = useState([]); // Track uploaded files
+  const [showHtmlEditor, setShowHtmlEditor] = useState(false); // HTML editor modal
+  const [htmlContent, setHtmlContent] = useState(''); // Current HTML being edited
+  const [htmlFilename, setHtmlFilename] = useState('index.html'); // Filename for download
   const MAX_TOKENS_PER_ROOM = 50000; // Global token limit across all rooms combined - never resets
   const retryIntervalRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -627,6 +630,115 @@ const ChatBot = () => {
   // Clear all uploaded files
   const clearAllUploadedFiles = () => {
     setUploadedFiles([]);
+  };
+
+  // Export conversation as DOCX
+  const exportConversationDocx = async () => {
+    if (messages.length === 0) {
+      alert(userLanguage === 'id' ? 'Tidak ada pesan untuk diekspor' : 'No messages to export');
+      return;
+    }
+
+    try {
+      // Convert messages to Q&A format
+      const answers = [];
+      for (let i = 0; i < messages.length - 1; i += 2) {
+        const userMsg = messages[i];
+        const botMsg = messages[i + 1];
+        
+        if (userMsg.sender === 'user' && botMsg.sender === 'bot') {
+          answers.push({
+            question: userMsg.text || '(user message)',
+            answer: botMsg.text || '(bot response)'
+          });
+        }
+      }
+
+      if (answers.length === 0) {
+        alert(userLanguage === 'id' ? 'Format percakapan tidak sesuai' : 'Conversation format not suitable');
+        return;
+      }
+
+      // Generate filename with timestamp
+      const now = new Date().toISOString().split('T')[0];
+      const filename = `jawaban-${now}-${Date.now()}.docx`;
+
+      // Call backend to generate DOCX
+      const response = await fetch('http://localhost:3001/api/generate-docx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers, filename })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate document');
+      }
+
+      const result = await response.json();
+      
+      // Download the file
+      const downloadUrl = `http://localhost:3001${result.downloadUrl}`;
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      alert(userLanguage === 'id' 
+        ? `✅ Dokumen berhasil dibuat!\nTonton folder Download`
+        : `✅ Document created!\nCheck your Downloads folder`);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert(`❌ ${userLanguage === 'id' ? 'Gagal membuat dokumen: ' : 'Failed to create document: '}${error.message}`);
+    }
+  };
+
+  // Detect and open HTML editor
+  const openHtmlEditor = (text) => {
+    // Try to extract HTML from message
+    const htmlMatch = text.match(/<html[^>]*>[\s\S]*<\/html>/i) || 
+                     text.match(/<body[^>]*>[\s\S]*<\/body>/i) ||
+                     text.match(/<div[^>]*>[\s\S]*<\/div>/i) ||
+                     text.match(/<!DOCTYPE[^>]*>[\s\S]*<\/html>/i);
+    
+    if (htmlMatch) {
+      setHtmlContent(htmlMatch[0]);
+      setHtmlFilename(`page-${Date.now()}.html`);
+      setShowHtmlEditor(true);
+    } else {
+      alert(userLanguage === 'id' 
+        ? '❌ Tidak ada HTML ditemukan dalam pesan ini' 
+        : '❌ No HTML found in this message');
+    }
+  };
+
+  // Download HTML file
+  const downloadHtmlFile = () => {
+    if (!htmlContent.trim()) {
+      alert(userLanguage === 'id' ? 'HTML kosong' : 'HTML is empty');
+      return;
+    }
+
+    try {
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = htmlFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      alert(userLanguage === 'id' 
+        ? `✅ File HTML diunduh: ${htmlFilename}` 
+        : `✅ HTML file downloaded: ${htmlFilename}`);
+      setShowHtmlEditor(false);
+    } catch (error) {
+      alert(`❌ ${error.message}`);
+    }
   };
 
   // Update conversation title based on first message
@@ -1633,6 +1745,85 @@ const ChatBot = () => {
         </div>
       )}
 
+      {/* HTML Editor Modal */}
+      {showHtmlEditor && (
+        <div className="modal-overlay" onClick={() => setShowHtmlEditor(false)}>
+          <div className="modal-content html-editor-modal" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="modal-close"
+              onClick={() => setShowHtmlEditor(false)}
+            >
+              ✕
+            </button>
+            <div className="modal-header">
+              <h2>💻 {userLanguage === 'id' ? 'Editor HTML' : 'HTML Editor'}</h2>
+            </div>
+            
+            <div className="modal-body html-editor-body">
+              {/* Filename input */}
+              <div className="html-filename-group">
+                <label>{userLanguage === 'id' ? 'Nama file:' : 'Filename:'}</label>
+                <input
+                  type="text"
+                  value={htmlFilename}
+                  onChange={(e) => setHtmlFilename(e.target.value || 'index.html')}
+                  placeholder="index.html"
+                  className="html-filename-input"
+                />
+              </div>
+
+              {/* HTML Editor Textarea */}
+              <div className="html-editor-group">
+                <label>{userLanguage === 'id' ? 'Kode HTML:' : 'HTML Code:'}</label>
+                <textarea
+                  value={htmlContent}
+                  onChange={(e) => setHtmlContent(e.target.value)}
+                  className="html-editor-textarea"
+                  spellCheck="false"
+                  placeholder={userLanguage === 'id' ? 'Edit HTML di sini...' : 'Edit HTML here...'}
+                />
+              </div>
+
+              {/* Preview button */}
+              <div className="html-preview-info">
+                <svg className="info-icon" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <span>{userLanguage === 'id' ? 'Preview akan terbuka di tab baru' : 'Preview opens in a new tab'}</span>
+              </div>
+            </div>
+
+            <div className="modal-footer html-editor-footer">
+              <button 
+                className="html-preview-btn"
+                onClick={() => {
+                  const blob = new Blob([htmlContent], { type: 'text/html' });
+                  const url = window.URL.createObjectURL(blob);
+                  window.open(url, '_blank');
+                  setTimeout(() => window.URL.revokeObjectURL(url), 100);
+                }}
+                title={userLanguage === 'id' ? 'Preview di tab baru' : 'Preview in new tab'}
+              >
+                👁️ {userLanguage === 'id' ? 'Preview' : 'Preview'}
+              </button>
+              <button 
+                className="modal-btn-submit html-download-btn"
+                onClick={downloadHtmlFile}
+                disabled={!htmlContent.trim()}
+              >
+                📥 {userLanguage === 'id' ? 'Unduh File' : 'Download'}
+              </button>
+              <button 
+                className="modal-btn-cancel"
+                onClick={() => setShowHtmlEditor(false)}
+              >
+                {userLanguage === 'id' ? 'Batal' : 'Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Floating hamburger button */}
       <button
         className={`toggle-sidebar-btn ${sidebarOpen ? 'hidden' : ''}`}
@@ -1676,6 +1867,15 @@ const ChatBot = () => {
 
         <button className="new-chat-btn" onClick={createNewConversation}>
           + New Chat
+        </button>
+
+        <button 
+          className="new-chat-btn" 
+          onClick={exportConversationDocx}
+          style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', marginTop: '8px' }}
+          title={userLanguage === 'id' ? 'Export percakapan ke DOCX' : 'Export conversation to DOCX'}
+        >
+          📄 Export DOCX
         </button>
 
         <div className="conversations-list">
@@ -1837,6 +2037,15 @@ const ChatBot = () => {
                       </div>
                     )}
                   </div>
+                  {message.sender === 'bot' && message.text && message.text.match(/<html|<body|<div/) && (
+                    <button 
+                      className="html-editor-btn"
+                      onClick={() => openHtmlEditor(message.text)}
+                      title={userLanguage === 'id' ? 'Edit & download HTML' : 'Edit & download HTML'}
+                    >
+                      💻 HTML
+                    </button>
+                  )}
                 </div>
               );
             });
