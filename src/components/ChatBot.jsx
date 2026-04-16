@@ -182,6 +182,9 @@ const ChatBot = () => {
   const programmaticScrollRef = useRef(false);
   const abortControllerRef = useRef(null);
   const partialMessageIdRef = useRef(null);
+  const autoRetryTimeoutRef = useRef(null);
+  const autoRetryCountRef = useRef(0);
+  const MAX_AUTO_RETRY = 3;
 
   const resetLocalStorageData = () => {
     const keysToClear = [
@@ -242,6 +245,16 @@ const ChatBot = () => {
       }
       createNewConversation();
     }
+  }, []);
+
+  // Cleanup auto-retry timeout on unmount or when clearing
+  useEffect(() => {
+    return () => {
+      if (autoRetryTimeoutRef.current) {
+        clearTimeout(autoRetryTimeoutRef.current);
+        autoRetryTimeoutRef.current = null;
+      }
+    };
   }, []);
 
   // Save conversations to localStorage whenever they change
@@ -1303,15 +1316,45 @@ const ChatBot = () => {
       setTimeout(() => {
         generateChatTitle(currentConversationId);
       }, 500);
+      
+      // Reset auto-retry counter on success
+      autoRetryCountRef.current = 0;
     } catch (err) {
       if (err.name === 'AbortError') {
         setError('Permintaan dihentikan.');
+        autoRetryCountRef.current = 0;
       } else {
-        setError(`Gagal: ${err.message}. Klik Continue untuk melanjutkan.`);
-        // Store the ID of the partial message so Continue button can append to it
+        // Store the ID of the partial message for auto-retry
         partialMessageIdRef.current = placeholderId;
+        
+        // Auto-retry with exponential backoff (hidden from user)
+        if (autoRetryCountRef.current < MAX_AUTO_RETRY) {
+          autoRetryCountRef.current += 1;
+          const delayMs = 1000 * autoRetryCountRef.current; // 1s, 2s, 3s
+          
+          console.log(`[Auto-Retry] Attempt ${autoRetryCountRef.current}/${MAX_AUTO_RETRY} in ${delayMs}ms`);
+          
+          // Clear any existing timeout
+          if (autoRetryTimeoutRef.current) {
+            clearTimeout(autoRetryTimeoutRef.current);
+          }
+          
+          // Auto-retry without showing error banner
+          autoRetryTimeoutRef.current = setTimeout(() => {
+            console.log(`[Auto-Retry] Retrying now...`);
+            handleRetryAuto(); // Use separate function for auto-retry
+          }, delayMs);
+          
+          setLoading(false);
+          // Don't show error, just let it retry silently
+          setError(null);
+        } else {
+          // After max retries, show error and let user manually click Continue
+          setError(`Gagal setelah ${MAX_AUTO_RETRY} percobaan. Klik Continue untuk melanjutkan.`);
+          autoRetryCountRef.current = 0;
+          setLoading(false);
+        }
       }
-      setLoading(false);
       abortControllerRef.current = null;
     }
   };
@@ -1383,6 +1426,56 @@ const ChatBot = () => {
       }
       setLoading(false);
       abortControllerRef.current = null;
+    }
+  };
+
+  // Auto-retry function (called automatically, no user interaction needed)
+  const handleRetryAuto = async () => {
+    if (!partialMessageIdRef.current) return;
+
+    setLoading(true);
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    try {
+      // Continue from partial response (same as handleRetry but without user error message)
+      const continuePrompt = `[Lanjutkan dari mana tadi, jangan ulangi pesan sebelumnya, hanya lanjutkan teks berikutnya]`;
+      const response = await sendMessageToGrok(continuePrompt, messages, userLanguage, currentConversationId, selectedPersonality, abortController);
+      const msgId = partialMessageIdRef.current;
+
+      await processStreamingResponse(response, (chunk) => {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === msgId
+              ? { ...msg, text: msg.text + chunk, isStreaming: true }
+              : msg
+          )
+        );
+      }, abortController.signal);
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === msgId ? { ...msg, isStreaming: false } : msg
+        )
+      );
+
+      partialMessageIdRef.current = null;
+      setLoading(false);
+      abortControllerRef.current = null;
+      
+      // Reset auto-retry counter on success
+      autoRetryCountRef.current = 0;
+    } catch (err) {
+      // If auto-retry fails again, let the main error handler deal with it
+      if (err.name !== 'AbortError') {
+        console.error('[Auto-Retry Failed]', err.message);
+      }
+      setLoading(false);
+      abortControllerRef.current = null;
+      
+      // Trigger another auto-retry via the main error handler logic
+      // This will be handled by the next attempt
     }
   };
 
