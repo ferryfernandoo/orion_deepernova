@@ -257,6 +257,80 @@
     height: 40px;
     font-size: 18px;
   }
+
+  /* Mobile input form fixes */
+  .input-form {
+    padding: 12px 12px;
+    gap: 0;
+  }
+
+  .input-form::before {
+    display: none;
+  }
+
+  /* Mobile input container fixes */
+  .input-container {
+    padding: 8px 8px 8px 12px;
+    gap: 6px;
+    min-height: 52px;
+    border-radius: 16px;
+  }
+
+  .message-input {
+    padding: 12px 8px;
+    font-size: 16px;
+    max-height: 120px;
+  }
+
+  .action-button {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* File menu toggle mobile */
+  .file-menu-toggle {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 16px;
+  }
+
+  /* Mobile dropdown - position fixed to prevent overflow */
+  .file-menu-dropdown {
+    position: fixed;
+    bottom: auto;
+    top: auto;
+    left: auto;
+    right: 16px;
+    margin-bottom: 0;
+    margin-top: 8px;
+    max-height: 70vh;
+    overflow-y: auto;
+    z-index: 1001;
+  }
+
+  /* Textarea wrapper responsive */
+  .textarea-wrapper {
+    gap: 6px;
+  }
+
+  /* File upload button mobile */
+  .file-upload-action-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 16px;
+  }
+
+  /* Reason button mobile */
+  .reason-button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 16px;
+  }
 }
 
 .sidebar-header {
