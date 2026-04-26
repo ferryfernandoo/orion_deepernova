@@ -32,6 +32,25 @@ function App() {
 
   const checkAuth = async () => {
     try {
+      // Check for client-side guest session first
+      const guestSessionStr = localStorage.getItem('guestSession');
+      if (guestSessionStr) {
+        try {
+          const guestUser = JSON.parse(guestSessionStr);
+          if (guestUser.guest) {
+            setIsAuthenticated(false);
+            setIsGuest(true);
+            setUser(guestUser);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.log('Invalid guest session in localStorage');
+          localStorage.removeItem('guestSession');
+        }
+      }
+      
+      // Otherwise try server auth
       const response = await fetch(`${apiUrl}/auth/me`, {
         credentials: 'include'
       });
