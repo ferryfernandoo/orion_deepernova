@@ -262,14 +262,18 @@
   .input-form {
     padding: 12px 14px;
     gap: 8px;
-    overflow: hidden;
   }
 
   .input-container {
     padding: 8px 8px 8px 12px;
     gap: 6px;
     min-height: 48px;
-    overflow: hidden;
+    flex-wrap: wrap;
+  }
+
+  .textarea-wrapper {
+    flex: 1;
+    min-width: 0;
   }
 
   .message-input {
@@ -284,6 +288,11 @@
     min-width: 40px;
     min-height: 40px;
     font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .file-menu-container {
+    flex-shrink: 0;
   }
 
   .file-menu-toggle {
@@ -301,11 +310,6 @@
     max-width: calc(100vw - 20px);
     max-height: 60vh;
     overflow-y: auto;
-  }
-
-  .file-menu-container {
-    position: relative;
-    flex-shrink: 0;
   }
 
   .file-upload-action-btn {
