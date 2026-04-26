@@ -63,20 +63,17 @@ const Login = ({ onLoginSuccess, onGuestLogin, onSignupSuccess }) => {
   const handleGuestLogin = async () => {
     try {
       setError(null);
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/auth/guest`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-      const text = await response.text();
-      const contentType = response.headers.get('content-type') || '';
-      const data = contentType.includes('application/json') ? JSON.parse(text) : null;
-
-      if (!response.ok) {
-        throw new Error(data?.error || text || 'Guest login failed');
-      }
-
-      onGuestLogin?.(data?.user || { name: 'Guest', email: 'guest@deepernova.com', guest: true });
+      // Client-side only - no server needed
+      const guestUser = { 
+        name: 'Guest', 
+        email: 'guest@deepernova.com', 
+        guest: true 
+      };
+      
+      // Store in localStorage for persistence
+      localStorage.setItem('guestSession', JSON.stringify(guestUser));
+      
+      onGuestLogin?.(guestUser);
     } catch (err) {
       console.error('Guest login error:', err);
       setError(err.message || 'Guest login failed');
@@ -124,6 +121,9 @@ const Login = ({ onLoginSuccess, onGuestLogin, onSignupSuccess }) => {
 
   const handleLogout = async () => {
     try {
+      // Clear guest session from localStorage
+      localStorage.removeItem('guestSession');
+      
       const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
       await fetch(`${apiUrl}/auth/logout`, {
         method: 'POST',
