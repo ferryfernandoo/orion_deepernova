@@ -144,50 +144,6 @@ GAYA KEPRIBADIAN: MENTOR
 
 const DEFAULT_PERSONALITY = 'formal';
 
-// NEW FUNCTION: Format AI response to be more structured with bold text and proper spacing
-const formatAIResponse = (text) => {
-  if (!text) return text;
-  
-  let formatted = text;
-  
-  // Step 1: Ensure proper spacing after colons (for list items)
-  formatted = formatted.replace(/:([^\s])/g, ': $1');
-  
-  // Step 2: Format numbered lists (1. Something) - add newline before and after if needed
-  formatted = formatted.replace(/(\d+\.\s+[^\n]+)/g, '\n$1\n');
-  
-  // Step 3: Format bullet points with dash or asterisk
-  formatted = formatted.replace(/^[•\-*]\s+([^\n]+)/gm, '\n• $1\n');
-  
-  // Step 4: Detect and bold key phrases (important keywords)
-  const boldPatterns = [
-    /(Penting|Kesimpulan|Ringkasan|Kesimpulan Akhir|Hasil|Rekomendasi|Saran|Kelebihan|Kekurangan|Solusi|Langkah-langkah)/gi,
-    /(Summary|Conclusion|Result|Recommendation|Solution|Steps|Pros|Cons)/gi,
-    /(Note:|Catatan:|Warning:|Peringatan:|Tips:|Info:)/gi,
-  ];
-  
-  boldPatterns.forEach(pattern => {
-    formatted = formatted.replace(pattern, (match) => `**${match}**`);
-  });
-  
-  // Step 5: Add paragraph spacing (ensure double newline after sentences ending with .!? followed by new paragraph)
-  formatted = formatted.replace(/([.!?])\s*\n\s*([A-Z])/g, '$1\n\n$2');
-  
-  // Step 6: Clean up excessive newlines (more than 2 becomes 2)
-  formatted = formatted.replace(/\n{3,}/g, '\n\n');
-  
-  // Step 7: Ensure heading-like lines (all caps short lines) are bolded
-  formatted = formatted.replace(/^([A-Z][A-Z\s]{3,})$/gm, '**$1**');
-  
-  // Step 8: Add spacing before conclusion sections
-  formatted = formatted.replace(/(\*\*Kesimpulan\*\*|\*\*Conclusion\*\*)/gi, '\n\n$1\n\n');
-  
-  // Step 9: Format "---" as horizontal rule with spacing
-  formatted = formatted.replace(/---+/g, '\n\n---\n\n');
-  
-  return formatted;
-};
-
 const ChatBot = ({ onLogout }) => {
   // Conversations management
   const [conversations, setConversations] = useState([]);
@@ -213,7 +169,6 @@ const ChatBot = ({ onLogout }) => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
-  const [showFloatingMenu, setShowFloatingMenu] = useState(false);
   const [tokensUsed, setTokensUsed] = useState(0); // Global token counter across ALL rooms combined
   const [uploadedFiles, setUploadedFiles] = useState([]); // Track uploaded files
   const [showHtmlEditor, setShowHtmlEditor] = useState(false); // HTML editor modal
@@ -221,10 +176,6 @@ const ChatBot = ({ onLogout }) => {
   const [htmlFilename, setHtmlFilename] = useState('index.html'); // Filename for download
   const [showVoiceChat, setShowVoiceChat] = useState(false); // Voice chat modal
   const [isReasonMode, setIsReasonMode] = useState(false); // Enable reasoning mode
-  const [collapsedCodeBlocks, setCollapsedCodeBlocks] = useState({}); // Track collapsed code blocks
-  const [customAlert, setCustomAlert] = useState(null); // Modern alert system
-  const [showInputMenu, setShowInputMenu] = useState(false); // Show/hide input menu
-  const [selectedModel, setSelectedModel] = useState('deepernova-1.2-flash'); // Model selection
   const MAX_TOKENS_PER_ROOM = 50000; // Global token limit across all rooms combined - never resets
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
   const retryIntervalRef = useRef(null);
@@ -246,14 +197,6 @@ const ChatBot = ({ onLogout }) => {
 
   const openLogoutConfirm = () => setShowLogoutConfirm(true);
   const closeLogoutConfirm = () => setShowLogoutConfirm(false);
-
-  // Modern alert system
-  const showAlert = (message, type = 'info', duration = 4000) => {
-    setCustomAlert({ message, type });
-    if (duration > 0) {
-      setTimeout(() => setCustomAlert(null), duration);
-    }
-  };
 
   const confirmLogout = async () => {
     setLogoutLoading(true);
@@ -514,7 +457,7 @@ const ChatBot = ({ onLogout }) => {
         messagesContainer.removeEventListener('scroll', handleScroll);
         messagesContainer.removeEventListener('wheel', handleWheel);
         messagesContainer.removeEventListener('triple-click', handleTripleClick);
-        messagesContainer.removeEventListener('click', handleClick);
+        messagesContainer.removeEventListener('mousedown', handleMouseDown);
       } catch (err) {
         console.log('Remove scroll listener error:', err);
       }
@@ -523,13 +466,6 @@ const ChatBot = ({ onLogout }) => {
 
   // Create new conversation
   const createNewConversation = () => {
-    // Check if there's already an empty conversation
-    const hasEmptyConversation = conversations.some(conv => conv.messages && conv.messages.length === 0);
-    if (hasEmptyConversation) {
-      alert(userLanguage === 'id' ? 'Selesaikan atau hapus chat kosong terlebih dahulu' : 'Please complete or delete the empty chat first');
-      return;
-    }
-
     const newId = Date.now().toString();
     const newConv = {
       id: newId,
@@ -547,14 +483,6 @@ const ChatBot = ({ onLogout }) => {
   };
 
   const startPrivateChat = () => {
-    // Check if there's already an empty conversation
-    const hasEmptyConversation = conversations.some(conv => conv.messages && conv.messages.length === 0);
-    if (hasEmptyConversation) {
-      alert(userLanguage === 'id' ? 'Selesaikan atau hapus chat kosong terlebih dahulu' : 'Please complete or delete the empty chat first');
-      setShowPrivateModal(false);
-      return;
-    }
-
     setShowPrivateModal(false);
     const newId = `private_${Date.now()}`;
     const newConv = {
@@ -730,20 +658,8 @@ const ChatBot = ({ onLogout }) => {
     setUploadedFiles([]);
   };
 
-  // Detect and open code editor for any language
+  // Detect and open HTML editor
   const openHtmlEditor = (text) => {
-    // Try to extract code blocks first (fenced code)
-    const codeMatch = text.match(/```[\s\S]*?```/);
-    if (codeMatch) {
-      const codeContent = codeMatch[0]
-        .replace(/^```\w*\n?/, '') // Remove opening fence and language
-        .replace(/```$/, '');       // Remove closing fence
-      setHtmlContent(codeContent);
-      setHtmlFilename(`code-${Date.now()}.txt`);
-      setShowHtmlEditor(true);
-      return;
-    }
-    
     // Try to extract HTML from message
     const htmlMatch = text.match(/<html[^>]*>[\s\S]*<\/html>/i) || 
                      text.match(/<body[^>]*>[\s\S]*<\/body>/i) ||
@@ -756,32 +672,20 @@ const ChatBot = ({ onLogout }) => {
       setShowHtmlEditor(true);
     } else {
       alert(userLanguage === 'id' 
-        ? '❌ Tidak ada code/HTML ditemukan dalam pesan ini' 
-        : '❌ No code/HTML found in this message');
+        ? '❌ Tidak ada HTML ditemukan dalam pesan ini' 
+        : '❌ No HTML found in this message');
     }
   };
 
-  // Download code/HTML file
+  // Download HTML file
   const downloadHtmlFile = () => {
     if (!htmlContent.trim()) {
-      alert(userLanguage === 'id' ? 'Code kosong' : 'Code is empty');
+      alert(userLanguage === 'id' ? 'HTML kosong' : 'HTML is empty');
       return;
     }
 
     try {
-      // Determine MIME type based on filename or content
-      let mimeType = 'text/plain';
-      if (htmlFilename.endsWith('.html') || htmlFilename.endsWith('.htm')) {
-        mimeType = 'text/html';
-      } else if (htmlFilename.endsWith('.js')) {
-        mimeType = 'application/javascript';
-      } else if (htmlFilename.endsWith('.json')) {
-        mimeType = 'application/json';
-      } else if (htmlFilename.endsWith('.css')) {
-        mimeType = 'text/css';
-      }
-      
-      const blob = new Blob([htmlContent], { type: mimeType });
+      const blob = new Blob([htmlContent], { type: 'text/html' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -792,8 +696,8 @@ const ChatBot = ({ onLogout }) => {
       window.URL.revokeObjectURL(url);
 
       alert(userLanguage === 'id' 
-        ? `✅ File diunduh: ${htmlFilename}` 
-        : `✅ File downloaded: ${htmlFilename}`);
+        ? `✅ File HTML diunduh: ${htmlFilename}` 
+        : `✅ HTML file downloaded: ${htmlFilename}`);
       setShowHtmlEditor(false);
     } catch (error) {
       alert(`❌ ${error.message}`);
@@ -1082,180 +986,116 @@ const ChatBot = ({ onLogout }) => {
     return filtered;
   };
 
-  // Improved formatMessageText - better handling of code blocks and tables with formatted AI response
+  // Improved formatMessageText - better handling of code blocks
   const formatMessageText = (text) => {
     if (!text) return text;
     
-    // Apply AI response formatting first (for bot messages only)
-    // We'll detect if it's a bot message by checking if we're in the bot rendering context
-    // Since this function is called for all messages, we need a way to know if it's bot
-    // We'll add a parameter later, but for now we'll format all text with AI formatting
-    // and then apply code block protection
-    
-    let processedForFormatting = text;
-    
-    // First, extract and protect code blocks before applying AI formatting
+    // First, extract and protect code blocks
     const codeBlocks = [];
-    let tempText = text;
+    let processedText = text;
     
     // Extract ```code``` blocks
-    tempText = tempText.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+    processedText = processedText.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
       const index = codeBlocks.length;
       codeBlocks.push({ type: 'fenced', lang: lang || 'text', code: code.trim() });
       return `__CODE_BLOCK_${index}__`;
     });
     
     // Extract `inline code`
-    tempText = tempText.replace(/`([^`]+)`/g, (match, code) => {
+    processedText = processedText.replace(/`([^`]+)`/g, (match, code) => {
       const index = codeBlocks.length;
       codeBlocks.push({ type: 'inline', code: code });
       return `__CODE_BLOCK_${index}__`;
     });
     
-    // Apply AI response formatting to the text without code blocks
-    let formattedText = formatAIResponse(tempText);
+    // Clean markdown from non-code text
+    let cleanedText = processedText
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/__(.*?)__/g, '$1')
+      .replace(/_(.*?)_/g, '$1')
+      .replace(/~~(.*?)~~/g, '$1')
+      .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+      .replace(/^#+\s+/gm, '')
+      .replace(/^[-*+]\s+/gm, '')
+      .replace(/^\d+\.\s+/gm, '')
+      .replace(/\n{3,}/g, '\n\n');
     
-    // Restore code blocks
-    formattedText = formattedText.replace(/__CODE_BLOCK_(\d+)__/g, (match, index) => {
-      const block = codeBlocks[parseInt(index)];
-      if (block.type === 'fenced') {
-        // Render fenced code block
-        const language = detectLanguage(block.code, block.lang);
-        const cleanedCode = cleanCodeBlock(block.code, language);
-        const highlighted = highlightCode(cleanedCode, language);
-        const lineCount = cleanedCode.split('\n').length;
-        const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1);
-        const codeBlockId = `code-${index}`;
-        const isCollapsed = collapsedCodeBlocks[codeBlockId];
-        
-        // Get language icon
-        const languageIcons = {
-          'javascript': '📜', 'js': '📜', 'typescript': '📘', 'ts': '📘',
-          'python': '🐍', 'java': '☕', 'cpp': '⚙️', 'c': '⚙️',
-          'html': '🌐', 'css': '🎨', 'jsx': '⚛️', 'tsx': '⚛️',
-          'json': '📦', 'sql': '🗄️', 'bash': '🖥️', 'sh': '🖥️',
-          'php': '🐘', 'ruby': '💎', 'go': '🚀', 'rust': '🦀',
-          'kotlin': '🔧', 'swift': '🍎', 'csharp': '#️⃣', 'cs': '#️⃣'
-        };
-        const icon = languageIcons[language.toLowerCase()] || '📝';
-        
-        return `<div class="code-block-container">
-          <div class="code-block-header">
-            <button class="code-collapse-btn" data-code-id="${codeBlockId}">${isCollapsed ? '▶️' : '▼️'}</button>
-            <span class="code-block-name">${icon} <strong>${language.toUpperCase()}</strong> (${lineCount} lines)</span>
-            <button class="code-copy-btn" data-code="${cleanedCode.replace(/"/g, '&quot;')}">📋</button>
-          </div>
-          ${!isCollapsed ? `<div class="code-content-wrapper">
-            <div class="code-line-numbers">${lineNumbers.map(n => `<div>${n}</div>`).join('')}</div>
-            <pre class="code-block"><code class="language-${language}">${highlighted}</code></pre>
-          </div>` : ''}
-        </div>`;
-      } else if (block.type === 'inline') {
-        return `<code class="inline-code">${block.code}</code>`;
-      }
-      return match;
-    });
+    // Restore code blocks with proper formatting
+    const result = [];
+    const parts = cleanedText.split(/(__CODE_BLOCK_\d+__)/g);
     
-    // Now parse markdown tables
-    const tableBlocks = [];
-    formattedText = formattedText.replace(/(\|.+\|(?:\n|\r\n))+/g, (match) => {
-      const lines = match.split(/\n|\r\n/).filter(line => line.trim());
-      if (lines.length >= 2 && lines.every(line => line.includes('|'))) {
-        const tableIndex = tableBlocks.length;
-        tableBlocks.push({ type: 'table', content: match });
-        return `__TABLE_BLOCK_${tableIndex}__`;
-      }
-      return match;
-    });
-    
-    // Restore tables with proper HTML
-    formattedText = formattedText.replace(/__TABLE_BLOCK_(\d+)__/g, (match, index) => {
-      const tableData = tableBlocks[parseInt(index)];
-      const lines = tableData.content
-        .trim()
-        .split(/\n|\r\n/)
-        .filter(line => line.trim());
-      
-      // Helper function to clean markdown from table cells
-      const cleanTableCell = (cell) => {
-        return cell
-          .replace(/\*\*(.*?)\*\*/g, '$1')
-          .replace(/\*(.*?)\*/g, '$1')
-          .replace(/__(.*?)__/g, '$1')
-          .replace(/_(.*?)_/g, '$1')
-          .replace(/~~(.*?)~~/g, '$1')
-          .replace(/`([^`]+)`/g, '$1')
-          .trim();
-      };
-      
-      // Parse rows - each line is a row
-      const rows = lines.map(line => 
-        line
-          .split('|')
-          .map(cell => cleanTableCell(cell))
-          .filter(cell => cell && cell !== '')
-      ).filter(row => row.length > 0);
-
-      if (rows.length >= 2) {
-        // First row is always header
-        const headerRow = rows[0];
-        
-        // Check if second row is separator (all dashes/colons)
-        const isSeparatorRow = rows[1].every(cell => /^[-:\s]*$/.test(cell));
-        
-        // Data rows start from index 1 (or 2 if separator exists)
-        const dataStartIndex = isSeparatorRow ? 2 : 1;
-        const dataRows = rows.slice(dataStartIndex);
-
-        return `<div class="table-container">
-          <table class="markdown-table">
-            <thead>
-              <tr>
-                ${headerRow.map((cell, idx) => `<th key="${idx}">${cell}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${dataRows.length > 0 ? 
-                dataRows.map((row, rowIdx) => `
-                  <tr key="${rowIdx}">
-                    ${row.map((cell, colIdx) => `<td key="${colIdx}">${cell}</td>`).join('')}
-                  </tr>
-                `).join('') :
-                `<tr><td colspan="${headerRow.length}" style="text-align: center; padding: 20px; color: #999;">Tidak ada data</td></tr>`
-              }
-            </tbody>
-          </table>
-        </div>`;
-      }
-      return match;
-    });
-    
-    // Convert remaining text to HTML with paragraphs and bold
-    const paragraphs = formattedText.split('\n\n');
-    let htmlResult = '';
-    for (let i = 0; i < paragraphs.length; i++) {
-      const para = paragraphs[i].trim();
-      if (para && !para.startsWith('<div') && !para.startsWith('<table') && !para.startsWith('<pre')) {
-        // Handle bold text within paragraph
-        const boldSegments = para.split(/(\*\*.*?\*\*)/g);
-        let paraHtml = '';
-        for (let segIdx = 0; segIdx < boldSegments.length; segIdx++) {
-          const segment = boldSegments[segIdx];
-          if (segment.startsWith('**') && segment.endsWith('**')) {
-            paraHtml += `<strong>${segment.slice(2, -2)}</strong>`;
-          } else {
-            paraHtml += segment;
+    for (const part of parts) {
+      const codeMatch = part.match(/__CODE_BLOCK_(\d+)__/);
+      if (codeMatch) {
+        const block = codeBlocks[parseInt(codeMatch[1])];
+        if (block.type === 'fenced') {
+          // Render fenced code block
+          const language = detectLanguage(block.code, block.lang);
+          const cleanedCode = cleanCodeBlock(block.code, language);
+          const highlighted = highlightCode(cleanedCode, language);
+          const lineCount = cleanedCode.split('\n').length;
+          const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1);
+          
+          result.push(
+            <div key={`code-${codeMatch[1]}`} className="code-block-container">
+              <div className="code-block-header">
+                <span className="code-language">{language}</span>
+                <button 
+                  className="code-copy-btn"
+                  onClick={() => navigator.clipboard.writeText(cleanedCode)}
+                  title="Copy code"
+                >
+                  📋
+                </button>
+              </div>
+              <div className="code-content-wrapper">
+                <div className="code-line-numbers">
+                  {lineNumbers.map((lineNum) => (
+                    <div key={lineNum}>{lineNum}</div>
+                  ))}
+                </div>
+                <pre className="code-block">
+                  <code 
+                    className={`language-${language}`}
+                    dangerouslySetInnerHTML={{ __html: highlighted }}
+                  />
+                </pre>
+              </div>
+            </div>
+          );
+        } else if (block.type === 'inline') {
+          // Render inline code
+          result.push(
+            <code key={`inline-${codeMatch[1]}`} className="inline-code">
+              {block.code}
+            </code>
+          );
+        }
+      } else if (part.trim()) {
+        // Render regular text with basic formatting
+        const paragraphs = part.split('\n\n');
+        for (let i = 0; i < paragraphs.length; i++) {
+          const para = paragraphs[i].trim();
+          if (para) {
+            // Handle bold text within paragraph
+            const boldSegments = para.split(/(\*\*.*?\*\*)/g);
+            result.push(
+              <p key={`p-${i}`} className="message-paragraph">
+                {boldSegments.map((segment, segIdx) => {
+                  if (segment.startsWith('**') && segment.endsWith('**')) {
+                    return <strong key={segIdx}>{segment.slice(2, -2)}</strong>;
+                  }
+                  return segment;
+                })}
+              </p>
+            );
           }
         }
-        htmlResult += `<p class="message-paragraph">${paraHtml}</p>`;
-      } else if (para && !para.startsWith('<div') && !para.startsWith('<table') && !para.startsWith('<pre') && !para.startsWith('</div') && !para.startsWith('</table')) {
-        htmlResult += para;
-      } else {
-        htmlResult += para;
       }
     }
     
-    return <div dangerouslySetInnerHTML={{ __html: htmlResult }} />;
+    return <>{result}</>;
   };
 
   const scrollToBottom = (isImmediate = false) => {
@@ -1355,21 +1195,6 @@ const ChatBot = ({ onLogout }) => {
       }
     }
   }, [messages]);
-
-  // Close input menu when clicking outside
-  useEffect(() => {
-    if (!showInputMenu) return;
-
-    const handleClickOutside = (e) => {
-      const menuContainer = document.querySelector('.input-menu-container');
-      if (menuContainer && !menuContainer.contains(e.target)) {
-        setShowInputMenu(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showInputMenu]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -1511,7 +1336,7 @@ Pastikan selalu gunakan tags <reasoning></reasoning> yang tepat.`;
     try {
       // Send to Orion AI with conversation history for advanced context
       // Use fullMessage (with file contents) instead of inputValue
-      const response = await sendMessageToGrok(fullMessage, messages, userLanguage, currentConversationId, selectedPersonality, abortController, selectedModel);
+      const response = await sendMessageToGrok(fullMessage, messages, userLanguage, currentConversationId, selectedPersonality, abortController);
 
       // Process streaming response - do NOT start local simulated streaming
       // Keep the placeholder and show the empty area below the user's message.
@@ -1893,15 +1718,6 @@ Pastikan selalu gunakan tags <reasoning></reasoning> yang tepat.`;
               >
                 {userLanguage === 'id' ? 'Tutup' : 'Close'}
               </button>
-              <button 
-                className="logout-btn"
-                onClick={() => {
-                  setShowSettingsModal(false);
-                  openLogoutConfirm();
-                }}
-              >
-                {userLanguage === 'id' ? 'Logout' : 'Logout'}
-              </button>
             </div>
           </div>
         </div>
@@ -1918,7 +1734,7 @@ Pastikan selalu gunakan tags <reasoning></reasoning> yang tepat.`;
               ✕
             </button>
             <div className="modal-header">
-              <h2>💻 {userLanguage === 'id' ? 'Editor Code' : 'Code Editor'}</h2>
+              <h2>💻 {userLanguage === 'id' ? 'Editor HTML' : 'HTML Editor'}</h2>
             </div>
             
             <div className="modal-body html-editor-body">
@@ -1928,21 +1744,21 @@ Pastikan selalu gunakan tags <reasoning></reasoning> yang tepat.`;
                 <input
                   type="text"
                   value={htmlFilename}
-                  onChange={(e) => setHtmlFilename(e.target.value || 'code.txt')}
-                  placeholder="code.txt"
+                  onChange={(e) => setHtmlFilename(e.target.value || 'index.html')}
+                  placeholder="index.html"
                   className="html-filename-input"
                 />
               </div>
 
-              {/* Code Editor Textarea */}
+              {/* HTML Editor Textarea */}
               <div className="html-editor-group">
-                <label>{userLanguage === 'id' ? 'Kode:' : 'Code:'}</label>
+                <label>{userLanguage === 'id' ? 'Kode HTML:' : 'HTML Code:'}</label>
                 <textarea
                   value={htmlContent}
                   onChange={(e) => setHtmlContent(e.target.value)}
                   className="html-editor-textarea"
                   spellCheck="false"
-                  placeholder={userLanguage === 'id' ? 'Edit code di sini...' : 'Edit code here...'}
+                  placeholder={userLanguage === 'id' ? 'Edit HTML di sini...' : 'Edit HTML here...'}
                 />
               </div>
 
@@ -1951,7 +1767,7 @@ Pastikan selalu gunakan tags <reasoning></reasoning> yang tepat.`;
                 <svg className="info-icon" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
                 </svg>
-                <span>{userLanguage === 'id' ? 'Preview akan terbuka di tab baru (untuk HTML)' : 'Preview opens in new tab (for HTML)'}</span>
+                <span>{userLanguage === 'id' ? 'Preview akan terbuka di tab baru' : 'Preview opens in a new tab'}</span>
               </div>
             </div>
 
@@ -1968,63 +1784,12 @@ Pastikan selalu gunakan tags <reasoning></reasoning> yang tepat.`;
               >
                 👁️ {userLanguage === 'id' ? 'Preview' : 'Preview'}
               </button>
-              
-              <button 
-                className="html-find-bugs-btn"
-                onClick={() => {
-                  // Generate line numbers for code
-                  const lines = htmlContent.split('\n');
-                  const codeWithLines = lines.map((line, idx) => `${String(idx + 1).padStart(3, ' ')}: ${line}`).join('\n');
-                  
-                  // Send detailed bug analysis prompt to AI
-                  const bugPrompt = userLanguage === 'id' 
-                    ? `Lakukan ANALISIS DETAIL untuk mencari bugs, logic errors, atau potential issues di kode berikut ini:\n\nFilename: ${htmlFilename}\nLanguage: ${htmlFilename.split('.').pop() || 'unknown'}\nTotal Lines: ${lines.length}\n\n📝 KODE DENGAN NOMOR BARIS:\n\`\`\`\n${codeWithLines}\n\`\`\`\n\n🔍 INSTRUKSI ANALISIS:\n1. **Baca seluruh kode** - pahami logic dan flow-nya\n2. **Cari bugs** - null pointer, type errors, logic errors, edge cases\n3. **Cari security issues** - injection, XSS, atau vulnerability lain\n4. **Cari performance issues** - infinite loop, memory leak, inefficiency\n5. **Format output**:\n   - **🐛 Bugs Found**: list bugs dengan line number (format: \"Line XX: [severity] - description\")\n   - **⚠️ Warnings**: potential issues\n   - **✅ Fixed Code**: provide corrected code dengan inline comments\n\nTulis dengan SANGAT DETAIL dan JELAS untuk setiap bug yang ditemukan.`
-                    : `Perform DETAILED ANALYSIS to find bugs, logic errors, or potential issues in the following code:\n\nFilename: ${htmlFilename}\nLanguage: ${htmlFilename.split('.').pop() || 'unknown'}\nTotal Lines: ${lines.length}\n\n📝 CODE WITH LINE NUMBERS:\n\`\`\`\n${codeWithLines}\n\`\`\`\n\n🔍 ANALYSIS INSTRUCTIONS:\n1. **Read entire code** - understand the logic and flow\n2. **Find bugs** - null pointers, type errors, logic errors, edge cases\n3. **Find security issues** - injection, XSS, or other vulnerabilities\n4. **Find performance issues** - infinite loops, memory leaks, inefficiencies\n5. **Format output**:\n   - **🐛 Bugs Found**: list bugs with line numbers (format: \"Line XX: [severity] - description\")\n   - **⚠️ Warnings**: potential issues\n   - **✅ Fixed Code**: provide corrected code with inline comments\n\nWrite VERY DETAILED and CLEAR for each bug found.`;
-                  
-                  setInputValue(bugPrompt);
-                  setShowHtmlEditor(false);
-                  
-                  // Auto focus input
-                  setTimeout(() => {
-                    const textarea = document.querySelector('.message-input');
-                    if (textarea) textarea.focus();
-                  }, 100);
-                }}
-                disabled={!htmlContent.trim()}
-                title={userLanguage === 'id' ? 'Analisis detail mencari bugs' : 'Detailed bug analysis'}
-              >
-                🐛 {userLanguage === 'id' ? 'Find Bugs' : 'Find Bugs'}
-              </button>
-              
-              <button 
-                className="html-ai-review-btn"
-                onClick={() => {
-                  // Send code to AI for review
-                  const reviewPrompt = userLanguage === 'id' 
-                    ? `Tolong review dan perbaiki kode berikut ini. Berikan suggestions untuk improvement, perbaikan bug, atau optimisasi. Jika ada yang perlu diperbaiki, berikan kode yang sudah diperbaiki dalam code block.\n\nFilename: ${htmlFilename}\n\n\`\`\`\n${htmlContent}\n\`\`\``
-                    : `Please review and improve the following code. Provide suggestions for improvements, bug fixes, or optimizations. If there are fixes needed, provide the corrected code in a code block.\n\nFilename: ${htmlFilename}\n\n\`\`\`\n${htmlContent}\n\`\`\``;
-                  
-                  setInputValue(reviewPrompt);
-                  setShowHtmlEditor(false);
-                  
-                  // Auto focus input
-                  setTimeout(() => {
-                    const textarea = document.querySelector('.message-input');
-                    if (textarea) textarea.focus();
-                  }, 100);
-                }}
-                disabled={!htmlContent.trim()}
-                title={userLanguage === 'id' ? 'Kirim ke AI untuk direview' : 'Send to AI for review'}
-              >
-                🤖 {userLanguage === 'id' ? 'AI Review' : 'AI Review'}
-              </button>
-              
               <button 
                 className="modal-btn-submit html-download-btn"
                 onClick={downloadHtmlFile}
                 disabled={!htmlContent.trim()}
               >
-                📥 {userLanguage === 'id' ? 'Download' : 'Download'}
+                📥 {userLanguage === 'id' ? 'Unduh File' : 'Download'}
               </button>
               <button 
                 className="modal-btn-cancel"
@@ -2081,77 +1846,6 @@ Pastikan selalu gunakan tags <reasoning></reasoning> yang tepat.`;
         ☰
       </button>
 
-      {/* Floating + button at top-right */}
-      <button
-        className={`floating-add-btn ${showFloatingMenu ? 'active' : ''}`}
-        onClick={() => setShowFloatingMenu(!showFloatingMenu)}
-        title={userLanguage === 'id' ? 'Menu tambahan' : 'More options'}
-      >
-        +
-      </button>
-
-      {/* Floating Code Panel button */}
-      {messages.some(msg => msg.sender === 'bot' && msg.text && msg.text.includes('```')) && (
-        <button
-          className="floating-code-panel-btn"
-          onClick={() => {
-            const lastBotMessage = messages.reverse().find(msg => msg.sender === 'bot' && msg.text && msg.text.includes('```'));
-            if (lastBotMessage) {
-              openHtmlEditor(lastBotMessage.text);
-            }
-          }}
-          title={userLanguage === 'id' ? 'Edit & download code' : 'Edit & download code'}
-        >
-          💻 {userLanguage === 'id' ? 'Code Panel' : 'Code Panel'}
-        </button>
-      )}
-
-      {/* Floating menu for + button */}
-      {showFloatingMenu && (
-        <div className="floating-menu">
-          <button
-            className="floating-menu-item"
-            onClick={() => {
-              createNewConversation();
-              setShowFloatingMenu(false);
-            }}
-            title={userLanguage === 'id' ? 'Chat baru' : 'New chat'}
-          >
-            💬 {userLanguage === 'id' ? 'Chat Baru' : 'New Chat'}
-          </button>
-          <button
-            className="floating-menu-item"
-            onClick={() => {
-              setShowPersonalityModal(true);
-              setShowFloatingMenu(false);
-            }}
-            title={userLanguage === 'id' ? 'Ubah kepribadian' : 'Change personality'}
-          >
-            🎭 {userLanguage === 'id' ? 'Kepribadian' : 'Personality'}
-          </button>
-          <button
-            className="floating-menu-item"
-            onClick={() => {
-              setShowSettingsModal(true);
-              setShowFloatingMenu(false);
-            }}
-            title={userLanguage === 'id' ? 'Pengaturan' : 'Settings'}
-          >
-            ⚙️ {userLanguage === 'id' ? 'Pengaturan' : 'Settings'}
-          </button>
-          <button
-            className="floating-menu-item"
-            onClick={() => {
-              setShowVoiceChat(true);
-              setShowFloatingMenu(false);
-            }}
-            title={userLanguage === 'id' ? 'Obrolan suara' : 'Voice chat'}
-          >
-            🎙️ {userLanguage === 'id' ? 'Suara' : 'Voice'}
-          </button>
-        </div>
-      )}
-
       {/* Sidebar */}
       <div className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
@@ -2180,6 +1874,13 @@ Pastikan selalu gunakan tags <reasoning></reasoning> yang tepat.`;
               title={userLanguage === 'id' ? 'Pengaturan' : 'Settings'}
             >
               ⚙️
+            </button>
+            <button
+              className="logout-btn"
+              onClick={openLogoutConfirm}
+              title={userLanguage === 'id' ? 'Logout' : 'Logout'}
+            >
+              ⎋
             </button>
             <button
               className="sidebar-toggle"
@@ -2217,6 +1918,20 @@ Pastikan selalu gunakan tags <reasoning></reasoning> yang tepat.`;
               </button>
             </div>
           ))}
+        </div>
+
+        {/* Personality Selector Button */}
+        <div className="personality-section">
+          <button
+            className="personality-selector-btn"
+            onClick={() => setShowPersonalityModal(true)}
+            title="Change AI personality"
+          >
+            <span className="personality-selector-emoji">{Object.values(PERSONALITIES).find(p => p.id === selectedPersonality)?.emoji}</span>
+            <span className="personality-selector-label">
+              {Object.values(PERSONALITIES).find(p => p.id === selectedPersonality)?.name}
+            </span>
+          </button>
         </div>
 
         {/* Token Usage Status */}
@@ -2360,6 +2075,17 @@ Pastikan selalu gunakan tags <reasoning></reasoning> yang tepat.`;
                       </div>
                     )}
                   </div>
+                  {message.sender === 'bot' && message.text && (
+                    (message.text.includes('```') || (message.text.includes('<html') && message.text.includes('<'))) && (
+                      <button 
+                        className="html-editor-btn"
+                        onClick={() => openHtmlEditor(message.text)}
+                        title={userLanguage === 'id' ? 'Edit & download HTML' : 'Edit & download HTML'}
+                      >
+                        💻
+                      </button>
+                    )
+                  )}
                 </div>
               );
             });
@@ -2491,104 +2217,47 @@ Pastikan selalu gunakan tags <reasoning></reasoning> yang tepat.`;
             style={{ display: 'none' }}
           />
           
-          {/* File/Options menu button */}
-          <div className="file-menu-container">
-            <button
-              type="button"
-              className="file-menu-toggle"
-              onClick={() => setShowInputMenu(!showInputMenu)}
-              title={userLanguage === 'id' ? 'Opsi' : 'Options'}
-              disabled={loading}
-            >
-              <svg className="button-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-              </svg>
-            </button>
-            {showInputMenu && (
-              <div className="file-menu-dropdown">
-                <button
-                  type="button"
-                  className="menu-item"
-                  onClick={() => {
-                    window.fileUploadInput?.click();
-                    setShowInputMenu(false);
-                  }}
-                  disabled={loading}
-                >
-                  <span className="menu-icon">📁</span>
-                  {userLanguage === 'id' ? 'Upload File' : 'Upload File'}
-                </button>
-                <div className="menu-divider"></div>
-                <button
-                  type="button"
-                  className={`menu-item ${isReasonMode ? 'active' : ''}`}
-                  onClick={() => {
-                    setIsReasonMode(!isReasonMode);
-                    setShowInputMenu(false);
-                  }}
-                  disabled={loading}
-                >
-                  <span className="menu-icon">{isReasonMode ? '✓' : '○'}</span>
-                  {userLanguage === 'id' ? 'Reason Mode' : 'Reason Mode'}
-                </button>
-                <div className="menu-divider"></div>
-                <div className="menu-label">{userLanguage === 'id' ? 'Model' : 'Model'}</div>
-                <button
-                  type="button"
-                  className={`menu-item ${selectedModel === 'deepernova-1.2-flash' ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedModel('deepernova-1.2-flash');
-                    setShowInputMenu(false);
-                  }}
-                >
-                  <span className="menu-icon">⚡</span>
-                  Deepernova 1.2 Flash
-                </button>
-                <button
-                  type="button"
-                  className={`menu-item ${selectedModel === 'deepernova-2.3-pro' ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedModel('deepernova-2.3-pro');
-                    setShowInputMenu(false);
-                  }}
-                >
-                  <span className="menu-icon">⚙️</span>
-                  Deepernova 2.3 Pro
-                </button>
-                <button
-                  type="button"
-                  className={`menu-item ${selectedModel === 'deepernova-4.6-giga' ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedModel('deepernova-4.6-giga');
-                    setShowInputMenu(false);
-                  }}
-                >
-                  <span className="menu-icon">🚀</span>
-                  Deepernova 4.6 Giga
-                </button>
-              </div>
-            )}
-          </div>
+          {/* File upload button */}
+          <button
+            type="button"
+            className="file-upload-action-btn"
+            onClick={() => window.fileUploadInput?.click()}
+            title={userLanguage === 'id' ? 'Upload file' : 'Upload file'}
+            disabled={loading}
+          >
+            <svg className="button-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+            </svg>
+          </button>
 
-          <div className="textarea-wrapper">
-            <textarea
-              ref={(el) => {
-                globalThis.textareaRef = el;
-              }}
-              value={inputValue}
-              onChange={(e) => {
-                setInputValue(e.target.value);
-                // Auto-resize textarea
-                const textarea = e.target;
-                textarea.style.height = 'auto';
-                textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
-              }}
-              placeholder={messages.length === 0 ? "Mengobrol dengan Orion..." : "Balas Orion..."}
-              disabled={loading}
-              className="message-input"
-              rows="1"
-            />
-          </div>
+          {/* Reason mode toggle button */}
+          <button
+            type="button"
+            className={`reason-button ${isReasonMode ? 'active' : ''}`}
+            onClick={() => setIsReasonMode(!isReasonMode)}
+            title={userLanguage === 'id' ? 'Toggle reason mode' : 'Toggle reason mode'}
+            disabled={loading}
+          >
+            🧠
+          </button>
+
+          <textarea
+            ref={(el) => {
+              globalThis.textareaRef = el;
+            }}
+            value={inputValue}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              // Auto-resize textarea
+              const textarea = e.target;
+              textarea.style.height = 'auto';
+              textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+            }}
+            placeholder={messages.length === 0 ? "Mengobrol dengan Orion..." : "Balas Orion..."}
+            disabled={loading}
+            className="message-input"
+            rows="1"
+          />
           <button 
             type={loading ? "button" : "submit"}
             className={`action-button ${loading ? 'stop-mode' : 'send-mode'}`}
