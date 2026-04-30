@@ -144,6 +144,50 @@ GAYA KEPRIBADIAN: MENTOR
 
 const DEFAULT_PERSONALITY = 'formal';
 
+// NEW FUNCTION: Format AI response to be more structured with bold text and proper spacing
+const formatAIResponse = (text) => {
+  if (!text) return text;
+  
+  let formatted = text;
+  
+  // Step 1: Ensure proper spacing after colons (for list items)
+  formatted = formatted.replace(/:([^\s])/g, ': $1');
+  
+  // Step 2: Format numbered lists (1. Something) - add newline before and after if needed
+  formatted = formatted.replace(/(\d+\.\s+[^\n]+)/g, '\n$1\n');
+  
+  // Step 3: Format bullet points with dash or asterisk
+  formatted = formatted.replace(/^[•\-*]\s+([^\n]+)/gm, '\n• $1\n');
+  
+  // Step 4: Detect and bold key phrases (important keywords)
+  const boldPatterns = [
+    /(Penting|Kesimpulan|Ringkasan|Kesimpulan Akhir|Hasil|Rekomendasi|Saran|Kelebihan|Kekurangan|Solusi|Langkah-langkah)/gi,
+    /(Summary|Conclusion|Result|Recommendation|Solution|Steps|Pros|Cons)/gi,
+    /(Note:|Catatan:|Warning:|Peringatan:|Tips:|Info:)/gi,
+  ];
+  
+  boldPatterns.forEach(pattern => {
+    formatted = formatted.replace(pattern, (match) => `**${match}**`);
+  });
+  
+  // Step 5: Add paragraph spacing (ensure double newline after sentences ending with .!? followed by new paragraph)
+  formatted = formatted.replace(/([.!?])\s*\n\s*([A-Z])/g, '$1\n\n$2');
+  
+  // Step 6: Clean up excessive newlines (more than 2 becomes 2)
+  formatted = formatted.replace(/\n{3,}/g, '\n\n');
+  
+  // Step 7: Ensure heading-like lines (all caps short lines) are bolded
+  formatted = formatted.replace(/^([A-Z][A-Z\s]{3,})$/gm, '**$1**');
+  
+  // Step 8: Add spacing before conclusion sections
+  formatted = formatted.replace(/(\*\*Kesimpulan\*\*|\*\*Conclusion\*\*)/gi, '\n\n$1\n\n');
+  
+  // Step 9: Format "---" as horizontal rule with spacing
+  formatted = formatted.replace(/---+/g, '\n\n---\n\n');
+  
+  return formatted;
+};
+
 const ChatBot = ({ onLogout }) => {
   // Conversations management
   const [conversations, setConversations] = useState([]);
@@ -470,7 +514,7 @@ const ChatBot = ({ onLogout }) => {
         messagesContainer.removeEventListener('scroll', handleScroll);
         messagesContainer.removeEventListener('wheel', handleWheel);
         messagesContainer.removeEventListener('triple-click', handleTripleClick);
-        messagesContainer.removeEventListener('mousedown', handleMouseDown);
+        messagesContainer.removeEventListener('click', handleClick);
       } catch (err) {
         console.log('Remove scroll listener error:', err);
       }
@@ -1038,246 +1082,180 @@ const ChatBot = ({ onLogout }) => {
     return filtered;
   };
 
-  // Improved formatMessageText - better handling of code blocks and tables
+  // Improved formatMessageText - better handling of code blocks and tables with formatted AI response
   const formatMessageText = (text) => {
     if (!text) return text;
     
-    // First, extract and protect code blocks
+    // Apply AI response formatting first (for bot messages only)
+    // We'll detect if it's a bot message by checking if we're in the bot rendering context
+    // Since this function is called for all messages, we need a way to know if it's bot
+    // We'll add a parameter later, but for now we'll format all text with AI formatting
+    // and then apply code block protection
+    
+    let processedForFormatting = text;
+    
+    // First, extract and protect code blocks before applying AI formatting
     const codeBlocks = [];
-    let processedText = text;
+    let tempText = text;
     
     // Extract ```code``` blocks
-    processedText = processedText.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+    tempText = tempText.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
       const index = codeBlocks.length;
       codeBlocks.push({ type: 'fenced', lang: lang || 'text', code: code.trim() });
       return `__CODE_BLOCK_${index}__`;
     });
     
     // Extract `inline code`
-    processedText = processedText.replace(/`([^`]+)`/g, (match, code) => {
+    tempText = tempText.replace(/`([^`]+)`/g, (match, code) => {
       const index = codeBlocks.length;
       codeBlocks.push({ type: 'inline', code: code });
       return `__CODE_BLOCK_${index}__`;
     });
     
-    // Extract markdown tables
+    // Apply AI response formatting to the text without code blocks
+    let formattedText = formatAIResponse(tempText);
+    
+    // Restore code blocks
+    formattedText = formattedText.replace(/__CODE_BLOCK_(\d+)__/g, (match, index) => {
+      const block = codeBlocks[parseInt(index)];
+      if (block.type === 'fenced') {
+        // Render fenced code block
+        const language = detectLanguage(block.code, block.lang);
+        const cleanedCode = cleanCodeBlock(block.code, language);
+        const highlighted = highlightCode(cleanedCode, language);
+        const lineCount = cleanedCode.split('\n').length;
+        const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1);
+        const codeBlockId = `code-${index}`;
+        const isCollapsed = collapsedCodeBlocks[codeBlockId];
+        
+        // Get language icon
+        const languageIcons = {
+          'javascript': '📜', 'js': '📜', 'typescript': '📘', 'ts': '📘',
+          'python': '🐍', 'java': '☕', 'cpp': '⚙️', 'c': '⚙️',
+          'html': '🌐', 'css': '🎨', 'jsx': '⚛️', 'tsx': '⚛️',
+          'json': '📦', 'sql': '🗄️', 'bash': '🖥️', 'sh': '🖥️',
+          'php': '🐘', 'ruby': '💎', 'go': '🚀', 'rust': '🦀',
+          'kotlin': '🔧', 'swift': '🍎', 'csharp': '#️⃣', 'cs': '#️⃣'
+        };
+        const icon = languageIcons[language.toLowerCase()] || '📝';
+        
+        return `<div class="code-block-container">
+          <div class="code-block-header">
+            <button class="code-collapse-btn" data-code-id="${codeBlockId}">${isCollapsed ? '▶️' : '▼️'}</button>
+            <span class="code-block-name">${icon} <strong>${language.toUpperCase()}</strong> (${lineCount} lines)</span>
+            <button class="code-copy-btn" data-code="${cleanedCode.replace(/"/g, '&quot;')}">📋</button>
+          </div>
+          ${!isCollapsed ? `<div class="code-content-wrapper">
+            <div class="code-line-numbers">${lineNumbers.map(n => `<div>${n}</div>`).join('')}</div>
+            <pre class="code-block"><code class="language-${language}">${highlighted}</code></pre>
+          </div>` : ''}
+        </div>`;
+      } else if (block.type === 'inline') {
+        return `<code class="inline-code">${block.code}</code>`;
+      }
+      return match;
+    });
+    
+    // Now parse markdown tables
     const tableBlocks = [];
-    // Better regex untuk markdown table: minimal 2 rows dengan | separators
-    processedText = processedText.replace(/(\|.+\|(?:\n|\r\n))+/g, (match) => {
-      // Validate it's actually a table (has at least header + separator or data rows)
+    formattedText = formattedText.replace(/(\|.+\|(?:\n|\r\n))+/g, (match) => {
       const lines = match.split(/\n|\r\n/).filter(line => line.trim());
       if (lines.length >= 2 && lines.every(line => line.includes('|'))) {
         const tableIndex = tableBlocks.length;
         tableBlocks.push({ type: 'table', content: match });
         return `__TABLE_BLOCK_${tableIndex}__`;
       }
-      return match; // Return original if not a valid table
+      return match;
     });
     
-    // Protect placeholders before markdown cleaning
-    let processedTextWithProtection = processedText;
-    const placeholderMap = new Map();
-    let placeholderCounter = 0;
-    
-    // Replace __CODE_BLOCK_X__ and __TABLE_BLOCK_X__ with safe markers
-    processedTextWithProtection = processedTextWithProtection.replace(/(__CODE_BLOCK_\d+__|__TABLE_BLOCK_\d+__)/g, (match) => {
-      const safeMarker = `<<PLACEHOLDER_${placeholderCounter}>>`;
-      placeholderMap.set(safeMarker, match);
-      placeholderCounter++;
-      return safeMarker;
-    });
-    
-    // Clean markdown from non-code text
-    let cleanedText = processedTextWithProtection
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/\*(.*?)\*/g, '$1')
-      .replace(/__(.*?)__/g, '$1')
-      .replace(/_(.*?)_/g, '$1')
-      .replace(/~~(.*?)~~/g, '$1')
-      .replace(/\[(.*?)\]\(.*?\)/g, '$1')
-      .replace(/^#+\s+/gm, '')
-      .replace(/^[-*+]\s+/gm, '')
-      .replace(/^\d+\.\s+/gm, '')
-      .replace(/\n{3,}/g, '\n\n');
-    
-    // Restore placeholders after markdown cleaning
-    for (const [marker, original] of placeholderMap.entries()) {
-      cleanedText = cleanedText.replace(marker, original);
-    }
-    
-    // Restore code blocks and tables with proper formatting
-    const result = [];
-    const parts = cleanedText.split(/(__CODE_BLOCK_\d+__|__TABLE_BLOCK_\d+__)/g);
-    
-    for (const part of parts) {
-      const codeMatch = part.match(/__CODE_BLOCK_(\d+)__/);
-      const tableMatch = part.match(/__TABLE_BLOCK_(\d+)__/);
+    // Restore tables with proper HTML
+    formattedText = formattedText.replace(/__TABLE_BLOCK_(\d+)__/g, (match, index) => {
+      const tableData = tableBlocks[parseInt(index)];
+      const lines = tableData.content
+        .trim()
+        .split(/\n|\r\n/)
+        .filter(line => line.trim());
       
-      if (codeMatch) {
-        const block = codeBlocks[parseInt(codeMatch[1])];
-        if (block.type === 'fenced') {
-          // Render fenced code block
-          const language = detectLanguage(block.code, block.lang);
-          const cleanedCode = cleanCodeBlock(block.code, language);
-          const highlighted = highlightCode(cleanedCode, language);
-          const lineCount = cleanedCode.split('\n').length;
-          const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1);
-          const codeBlockId = `code-${codeMatch[1]}`;
-          const isCollapsed = collapsedCodeBlocks[codeBlockId];
-          
-          // Get language icon
-          const languageIcons = {
-            'javascript': '📜', 'js': '📜', 'typescript': '📘', 'ts': '📘',
-            'python': '🐍', 'java': '☕', 'cpp': '⚙️', 'c': '⚙️',
-            'html': '🌐', 'css': '🎨', 'jsx': '⚛️', 'tsx': '⚛️',
-            'json': '📦', 'sql': '🗄️', 'bash': '🖥️', 'sh': '🖥️',
-            'php': '🐘', 'ruby': '💎', 'go': '🚀', 'rust': '🦀',
-            'kotlin': '🔧', 'swift': '🍎', 'csharp': '#️⃣', 'cs': '#️⃣'
-          };
-          const icon = languageIcons[language.toLowerCase()] || '📝';
-          
-          result.push(
-            <div key={codeBlockId} className="code-block-container">
-              <div className="code-block-header">
-                <button 
-                  className="code-collapse-btn"
-                  onClick={() => setCollapsedCodeBlocks(prev => ({
-                    ...prev,
-                    [codeBlockId]: !isCollapsed
-                  }))}
-                  title={isCollapsed ? 'Expand' : 'Collapse'}
-                >
-                  {isCollapsed ? '▶️' : '▼️'}
-                </button>
-                <span className="code-block-name">
-                  {icon} <strong>{language.toUpperCase()}</strong> ({lineCount} lines)
-                </span>
-                <button 
-                  className="code-copy-btn"
-                  onClick={() => navigator.clipboard.writeText(cleanedCode)}
-                  title="Copy code"
-                >
-                  📋
-                </button>
-              </div>
-              {!isCollapsed && (
-                <div className="code-content-wrapper">
-                  <div className="code-line-numbers">
-                    {lineNumbers.map((lineNum) => (
-                      <div key={lineNum}>{lineNum}</div>
-                    ))}
-                  </div>
-                  <pre className="code-block">
-                    <code 
-                      className={`language-${language}`}
-                      dangerouslySetInnerHTML={{ __html: highlighted }}
-                    />
-                  </pre>
-                </div>
-              )}
-            </div>
-          );
-        } else if (block.type === 'inline') {
-          // Render inline code
-          result.push(
-            <code key={`inline-${codeMatch[1]}`} className="inline-code">
-              {block.code}
-            </code>
-          );
-        }
-      } else if (tableMatch) {
-        const tableData = tableBlocks[parseInt(tableMatch[1])];
-        const lines = tableData.content
-          .trim()
-          .split(/\n|\r\n/)
-          .filter(line => line.trim());
-        
-        // Helper function to clean markdown from table cells
-        const cleanTableCell = (cell) => {
-          return cell
-            .replace(/\*\*(.*?)\*\*/g, '$1')
-            .replace(/\*(.*?)\*/g, '$1')
-            .replace(/__(.*?)__/g, '$1')
-            .replace(/_(.*?)_/g, '$1')
-            .replace(/~~(.*?)~~/g, '$1')
-            .replace(/`([^`]+)`/g, '$1')
-            .trim();
-        };
-        
-        // Parse rows - each line is a row
-        const rows = lines.map(line => 
-          line
-            .split('|')
-            .map(cell => cleanTableCell(cell))
-            .filter(cell => cell && cell !== '')
-        ).filter(row => row.length > 0);
+      // Helper function to clean markdown from table cells
+      const cleanTableCell = (cell) => {
+        return cell
+          .replace(/\*\*(.*?)\*\*/g, '$1')
+          .replace(/\*(.*?)\*/g, '$1')
+          .replace(/__(.*?)__/g, '$1')
+          .replace(/_(.*?)_/g, '$1')
+          .replace(/~~(.*?)~~/g, '$1')
+          .replace(/`([^`]+)`/g, '$1')
+          .trim();
+      };
+      
+      // Parse rows - each line is a row
+      const rows = lines.map(line => 
+        line
+          .split('|')
+          .map(cell => cleanTableCell(cell))
+          .filter(cell => cell && cell !== '')
+      ).filter(row => row.length > 0);
 
-        if (rows.length >= 2) {
-          // First row is always header
-          const headerRow = rows[0];
-          
-          // Check if second row is separator (all dashes/colons)
-          const isSeparatorRow = rows[1].every(cell => /^[-:\s]*$/.test(cell));
-          
-          // Data rows start from index 1 (or 2 if separator exists)
-          const dataStartIndex = isSeparatorRow ? 2 : 1;
-          const dataRows = rows.slice(dataStartIndex);
+      if (rows.length >= 2) {
+        // First row is always header
+        const headerRow = rows[0];
+        
+        // Check if second row is separator (all dashes/colons)
+        const isSeparatorRow = rows[1].every(cell => /^[-:\s]*$/.test(cell));
+        
+        // Data rows start from index 1 (or 2 if separator exists)
+        const dataStartIndex = isSeparatorRow ? 2 : 1;
+        const dataRows = rows.slice(dataStartIndex);
 
-          result.push(
-            <div key={`table-${tableMatch[1]}`} className="table-container">
-              <table className="markdown-table">
-                <thead>
-                  <tr>
-                    {headerRow.map((cell, idx) => (
-                      <th key={idx}>{cell}</th>
-                    ))}
+        return `<div class="table-container">
+          <table class="markdown-table">
+            <thead>
+              <tr>
+                ${headerRow.map((cell, idx) => `<th key="${idx}">${cell}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${dataRows.length > 0 ? 
+                dataRows.map((row, rowIdx) => `
+                  <tr key="${rowIdx}">
+                    ${row.map((cell, colIdx) => `<td key="${colIdx}">${cell}</td>`).join('')}
                   </tr>
-                </thead>
-                <tbody>
-                  {dataRows.length > 0 ? (
-                    dataRows.map((row, rowIdx) => (
-                      <tr key={rowIdx}>
-                        {row.map((cell, colIdx) => (
-                          <td key={colIdx}>{cell}</td>
-                        ))}
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={headerRow.length} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
-                        Tidak ada data
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          );
-        }
-      } else if (part.trim()) {
-        // Render regular text with basic formatting
-        const paragraphs = part.split('\n\n');
-        for (let i = 0; i < paragraphs.length; i++) {
-          const para = paragraphs[i].trim();
-          if (para) {
-            // Handle bold text within paragraph
-            const boldSegments = para.split(/(\*\*.*?\*\*)/g);
-            result.push(
-              <p key={`p-${i}`} className="message-paragraph">
-                {boldSegments.map((segment, segIdx) => {
-                  if (segment.startsWith('**') && segment.endsWith('**')) {
-                    return <strong key={segIdx}>{segment.slice(2, -2)}</strong>;
-                  }
-                  return segment;
-                })}
-              </p>
-            );
+                `).join('') :
+                `<tr><td colspan="${headerRow.length}" style="text-align: center; padding: 20px; color: #999;">Tidak ada data</td></tr>`
+              }
+            </tbody>
+          </table>
+        </div>`;
+      }
+      return match;
+    });
+    
+    // Convert remaining text to HTML with paragraphs and bold
+    const paragraphs = formattedText.split('\n\n');
+    let htmlResult = '';
+    for (let i = 0; i < paragraphs.length; i++) {
+      const para = paragraphs[i].trim();
+      if (para && !para.startsWith('<div') && !para.startsWith('<table') && !para.startsWith('<pre')) {
+        // Handle bold text within paragraph
+        const boldSegments = para.split(/(\*\*.*?\*\*)/g);
+        let paraHtml = '';
+        for (let segIdx = 0; segIdx < boldSegments.length; segIdx++) {
+          const segment = boldSegments[segIdx];
+          if (segment.startsWith('**') && segment.endsWith('**')) {
+            paraHtml += `<strong>${segment.slice(2, -2)}</strong>`;
+          } else {
+            paraHtml += segment;
           }
         }
+        htmlResult += `<p class="message-paragraph">${paraHtml}</p>`;
+      } else if (para && !para.startsWith('<div') && !para.startsWith('<table') && !para.startsWith('<pre') && !para.startsWith('</div') && !para.startsWith('</table')) {
+        htmlResult += para;
+      } else {
+        htmlResult += para;
       }
     }
     
-    return <>{result}</>;
+    return <div dangerouslySetInnerHTML={{ __html: htmlResult }} />;
   };
 
   const scrollToBottom = (isImmediate = false) => {
