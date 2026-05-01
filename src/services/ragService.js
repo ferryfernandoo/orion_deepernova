@@ -273,6 +273,59 @@ class RagService {
     return results;
   }
 
+  // Format search results as context string for injection into prompts
+  formatContextForPrompt(searchResults, maxTokens = 2000) {
+    if (!searchResults || searchResults.length === 0) return '';
+    
+    let context = 'KNOWLEDGE BASE CONTEXT (untuk referensi):\n\n';
+    let tokenEstimate = 0;
+    const tokenPerChar = 0.25; // rough estimate
+    
+    for (const result of searchResults) {
+      const doc = result.doc || result;
+      const title = doc.title || 'Unknown';
+      const content = doc.content || '';
+      const chunk = `[${title}]\n${content}\n`;
+      const chunkTokens = Math.ceil(chunk.length * tokenPerChar);
+      
+      if (tokenEstimate + chunkTokens > maxTokens) break;
+      
+      context += chunk + '\n---\n\n';
+      tokenEstimate += chunkTokens;
+    }
+    
+    return context;
+  }
+
+  // Auto-ingest knowledge base from dataset
+  async ingestKnowledgeBase(datasource = '/data/datasets/orion_dataset.json') {
+    try {
+      const response = await fetch(datasource);
+      if (!response.ok) return false;
+      
+      const data = await response.json();
+      if (!Array.isArray(data)) return false;
+      
+      // Clear existing knowledge base docs to avoid duplication
+      this.clearIndex('knowledge_base');
+      
+      // Index each document from dataset
+      const docsToIndex = data.map(item => ({
+        id: item.id,
+        title: item.title,
+        text: item.text,
+        namespace: 'knowledge_base'
+      }));
+      
+      this.indexDocuments(docsToIndex);
+      console.log(`✅ RAG: Ingested ${docsToIndex.length} knowledge base documents`);
+      return true;
+    } catch (e) {
+      console.error('Failed to ingest knowledge base:', e);
+      return false;
+    }
+  }
+
   getStats() {
     return { totalChunks: this.index.docs.length };
   }
