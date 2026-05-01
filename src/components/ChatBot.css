@@ -58,17 +58,6 @@
   animation: slideUp 0.3s ease;
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .modal-close {
   position: absolute;
   top: 16px;
@@ -1945,17 +1934,6 @@
   background: linear-gradient(135deg, rgba(254, 243, 230, 0.4) 0%, rgba(254, 240, 220, 0.4) 100%);
   border-bottom: 1px solid rgba(249, 115, 22, 0.2);
   animation: slideDown 0.3s ease;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .uploaded-files-header {
