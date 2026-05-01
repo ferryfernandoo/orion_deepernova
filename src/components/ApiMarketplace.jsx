@@ -11,11 +11,19 @@ const ApiMarketplace = ({ onLogout }) => {
   const [showFullKeyModal, setShowFullKeyModal] = useState(false);
   const [copiedText, setCopiedText] = useState('');
   const [activeTab, setActiveTab] = useState('getting-started');
+  const [codeLanguage, setCodeLanguage] = useState('javascript');
+  const [navOpen, setNavOpen] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [selectedKeyId, setSelectedKeyId] = useState(null);
   const [selectedKeyFull, setSelectedKeyFull] = useState('');
   const [createdKey, setCreatedKey] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+
+  const totalKeys = apiKeys.length;
+  const activeKeys = apiKeys.filter((key) => key.isActive).length;
+  const totalRequests = usageStats?.stats?.totalRequests || 0;
+  const totalTokens = usageStats?.stats?.totalTokens || 0;
+  const totalCost = usageStats?.stats?.totalCost ? usageStats.stats.totalCost.toFixed(2) : '0.00';
 
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
@@ -155,17 +163,18 @@ const ApiMarketplace = ({ onLogout }) => {
     <div className="api-marketplace">
       <nav className="api-nav">
         <div className="nav-container">
-          <div className="logo">
+            <div className="logo">
             <h1>🚀 Deepernova API</h1>
             <span className="tagline">Advanced AI API</span>
           </div>
-          <div className="nav-menu">
-            <button className={`nav-btn ${currentPage === 'landing' ? 'active' : ''}`} onClick={() => setCurrentPage('landing')}>Home</button>
-            <button className={`nav-btn ${currentPage === 'docs' ? 'active' : ''}`} onClick={() => setCurrentPage('docs')}>Documentation</button>
-            <button className={`nav-btn ${currentPage === 'pricing' ? 'active' : ''}`} onClick={() => setCurrentPage('pricing')}>Pricing</button>
-            {apiKeys.length > 0 && <button className={`nav-btn ${currentPage === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentPage('dashboard')}>Dashboard</button>}
+          <button className="nav-toggle" onClick={() => setNavOpen((prev) => !prev)} aria-label="Toggle navigation menu" aria-expanded={navOpen}>{navOpen ? '×' : '☰'}</button>
+          <div className={`api-nav-menu ${navOpen ? 'open' : 'collapsed'}`}>
+            <button className={`api-nav-btn ${currentPage === 'landing' ? 'active' : ''}`} onClick={() => { setCurrentPage('landing'); setNavOpen(false); }}>Home</button>
+            <button className={`api-nav-btn ${currentPage === 'docs' ? 'active' : ''}`} onClick={() => { setCurrentPage('docs'); setNavOpen(false); }}>DOC</button>
+            <button className={`api-nav-btn ${currentPage === 'pricing' ? 'active' : ''}`} onClick={() => { setCurrentPage('pricing'); setNavOpen(false); }}>Pricing</button>
+            {apiKeys.length > 0 && <button className={`api-nav-btn ${currentPage === 'dashboard' ? 'active' : ''}`} onClick={() => { setCurrentPage('dashboard'); setNavOpen(false); }}>Dashboard</button>}
           </div>
-          <div className="nav-actions">
+          <div className="api-nav-actions">
             {apiKeys.length > 0 ? (
               <button className="btn-logout" onClick={onLogout}>Logout</button>
             ) : (
@@ -206,48 +215,120 @@ const ApiMarketplace = ({ onLogout }) => {
               {activeTab === 'getting-started' && (
                 <section>
                   <h3>Getting Started</h3>
-                  <p>Activate your account, generate an API key, and start integrating with a single endpoint. Deepernova is designed for fast onboarding and straightforward deployment.</p>
+                  <p>Welcome to Deepernova. This guide helps you set up your account, generate an API key, and integrate with a single, unified endpoint.</p>
+                  <div className="doc-highlight">
+                    <p><strong>Base URL</strong></p>
+                    <code>https://api.deepernova.id/v1</code>
+                  </div>
+                  <h4>Step-by-step setup</h4>
                   <ol>
-                    <li>Open the dashboard and create a new API key.</li>
-                    <li>Copy the key and keep it secure.</li>
-                    <li>Send requests to the API using standard HTTP tooling.</li>
+                    <li>Login to the dashboard and create a new API key.</li>
+                    <li>Copy the key and store it securely.</li>
+                    <li>Send requests using standard HTTP tools or your preferred SDK.</li>
                   </ol>
-                  <h4>Base URL</h4>
-                  <code>https://api.deepernova.id/v1</code>
+                  <h4>Best practices</h4>
+                  <ul>
+                    <li>Never embed API keys in client-side code.</li>
+                    <li>Rotate keys regularly and delete unused ones.</li>
+                    <li>Monitor usage through the dashboard analytics.</li>
+                  </ul>
                 </section>
               )}
               {activeTab === 'authentication' && (
                 <section>
                   <h3>Authentication</h3>
-                  <p>All requests must include your API key in the Authorization header. Use Bearer token authentication for every request.</p>
+                  <p>All requests must include your API key in the <code>Authorization</code> header using Bearer token authentication.</p>
                   <div className="code-block">
                     <code>Authorization: Bearer YOUR_API_KEY</code>
                     <button onClick={() => copyToClipboard('Authorization: Bearer YOUR_API_KEY', 'auth')}>Copy</button>
                   </div>
+                  <h4>Header example</h4>
+                  <pre>{`POST https://api.deepernova.id/v1/chat/completions
+Content-Type: application/json
+Authorization: Bearer YOUR_API_KEY`}</pre>
+                  <h4>Secure storage</h4>
+                  <p>Use environment variables or secure secrets management in production. Example:</p>
+                  <pre>{`export DEEPERNOVA_API_KEY="YOUR_API_KEY"
+const apiKey = process.env.DEEPERNOVA_API_KEY;`}</pre>
                 </section>
               )}
               {activeTab === 'chat-api' && (
                 <section>
                   <h3>Chat API</h3>
-                  <p>The chat endpoint supports conversational requests and returns structured assistant responses. Submit a JSON payload with your prompt and optional context.</p>
+                  <p>The Chat API is the primary interface for conversational AI. It accepts a sequence of messages and returns a structured response from the assistant.</p>
                   <h4>Endpoint</h4>
                   <code>POST /chat/completions</code>
-                  <h4>Payload</h4>
+                  <h4>Request body</h4>
                   <pre>{`{
   "model": "deepernova-chat",
   "messages": [
-    { "role": "system", "content": "You are an expert assistant." },
-    { "role": "user", "content": "Explain the new API." }
-  ]
+    { "role": "system", "content": "You are a helpful assistant." },
+    { "role": "user", "content": "Generate a short product description." }
+  ],
+  "temperature": 0.7,
+  "max_tokens": 500
 }`}</pre>
+                  <h4>Response format</h4>
+                  <pre>{`{
+  "id": "response_123",
+  "object": "chat.completion",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Deepernova is a modern AI API built for fast, flexible integrations..."
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 32,
+    "completion_tokens": 42,
+    "total_tokens": 74
+  }
+}`}</pre>
+                  <h4>Important fields</h4>
+                  <ul>
+                    <li><strong>model</strong>: selects the AI model.</li>
+                    <li><strong>messages</strong>: conversation history used by the model.</li>
+                    <li><strong>temperature</strong>: controls randomness.</li>
+                    <li><strong>max_tokens</strong>: caps the output length.</li>
+                  </ul>
                 </section>
               )}
               {activeTab === 'examples' && (
                 <section>
                   <h3>Examples</h3>
-                  <p>Use the following examples to make your first request in JavaScript, Python, or cURL.</p>
-                  <h4>JavaScript</h4>
-                  <pre>{`fetch('https://api.deepernova.id/v1/chat/completions', {
+                  <p>Choose your preferred language to see a complete integration example.</p>
+                  
+                  <div className="code-lang-tabs">
+                    <button 
+                      className={`code-lang-btn ${codeLanguage === 'javascript' ? 'active' : ''}`}
+                      onClick={() => setCodeLanguage('javascript')}
+                    >
+                      JavaScript
+                    </button>
+                    <button 
+                      className={`code-lang-btn ${codeLanguage === 'python' ? 'active' : ''}`}
+                      onClick={() => setCodeLanguage('python')}
+                    >
+                      Python
+                    </button>
+                    <button 
+                      className={`code-lang-btn ${codeLanguage === 'curl' ? 'active' : ''}`}
+                      onClick={() => setCodeLanguage('curl')}
+                    >
+                      cURL
+                    </button>
+                  </div>
+
+                  {codeLanguage === 'javascript' && (
+                    <div className="code-block-wrapper">
+                      <div className="code-block-header">
+                        <span className="code-lang-label">JavaScript (Node.js)</span>
+                        <button 
+                          className="code-copy-btn"
+                          onClick={() => copyToClipboard(`fetch('https://api.deepernova.id/v1/chat/completions', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -260,24 +341,111 @@ const ApiMarketplace = ({ onLogout }) => {
     ]
   })
 })
-.then(res => res.json())
-.then(data => console.log(data));`}</pre>
-                  <h4>cURL</h4>
-                  <pre>{`curl https://api.deepernova.id/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  .then(res => res.json())
+  .then(data => console.log(data));`, 'js-code')}
+                        >
+                          {copiedText === 'js-code' ? '✓ Copied' : 'Copy'}
+                        </button>
+                      </div>
+                      <pre className="code-block-content">{`fetch('https://api.deepernova.id/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY'
+  },
+  body: JSON.stringify({
+    model: 'deepernova-chat',
+    messages: [
+      { role: 'user', content: 'Tell me about Deepernova.' }
+    ]
+  })
+})
+  .then(res => res.json())
+  .then(data => console.log(data));`}</pre>
+                    </div>
+                  )}
+
+                  {codeLanguage === 'python' && (
+                    <div className="code-block-wrapper">
+                      <div className="code-block-header">
+                        <span className="code-lang-label">Python (requests)</span>
+                        <button 
+                          className="code-copy-btn"
+                          onClick={() => copyToClipboard(`import os
+import requests
+
+api_key = os.getenv('DEEPERNOVA_API_KEY')
+url = 'https://api.deepernova.id/v1/chat/completions'
+headers = {
+    'Content-Type': 'application/json',
+    'Authorization': f'Bearer {api_key}'
+}
+payload = {
+    'model': 'deepernova-chat',
+    'messages': [
+        { 'role': 'user', 'content': 'Write a summary of Deepernova.' }
+    ]
+}
+response = requests.post(url, json=payload, headers=headers)
+print(response.json())`, 'py-code')}
+                        >
+                          {copiedText === 'py-code' ? '✓ Copied' : 'Copy'}
+                        </button>
+                      </div>
+                      <pre className="code-block-content">{`import os
+import requests
+
+api_key = os.getenv('DEEPERNOVA_API_KEY')
+url = 'https://api.deepernova.id/v1/chat/completions'
+headers = {
+    'Content-Type': 'application/json',
+    'Authorization': f'Bearer {api_key}'
+}
+payload = {
+    'model': 'deepernova-chat',
+    'messages': [
+        { 'role': 'user', 'content': 'Write a summary of Deepernova.' }
+    ]
+}
+response = requests.post(url, json=payload, headers=headers)
+print(response.json())`}</pre>
+                    </div>
+                  )}
+
+                  {codeLanguage === 'curl' && (
+                    <div className="code-block-wrapper">
+                      <div className="code-block-header">
+                        <span className="code-lang-label">cURL</span>
+                        <button 
+                          className="code-copy-btn"
+                          onClick={() => copyToClipboard(`curl https://api.deepernova.id/v1/chat/completions \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -d '{"model":"deepernova-chat","messages":[{"role":"user","content":"What can you do?"}]}'`, 'curl-code')}
+                        >
+                          {copiedText === 'curl-code' ? '✓ Copied' : 'Copy'}
+                        </button>
+                      </div>
+                      <pre className="code-block-content">{`curl https://api.deepernova.id/v1/chat/completions \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
   -d '{"model":"deepernova-chat","messages":[{"role":"user","content":"What can you do?"}]}'`}</pre>
+                    </div>
+                  )}
                 </section>
               )}
               {activeTab === 'error-handling' && (
                 <section>
                   <h3>Error Handling</h3>
-                  <p>Use response status codes and error payloads to handle failures reliably.</p>
+                  <p>Handle API errors proactively by checking status codes and error messages. This improves reliability and helps maintain a smooth user experience.</p>
                   <ul>
                     <li><strong>401 Unauthorized</strong> — invalid or missing API key.</li>
-                    <li><strong>429 Rate Limited</strong> — request quota exceeded; retry after waiting.</li>
-                    <li><strong>500 Server Error</strong> — internal issue; retry or contact support.</li>
+                    <li><strong>429 Too Many Requests</strong> — rate limit exceeded; implement retry backoff.</li>
+                    <li><strong>400 Bad Request</strong> — invalid payload or missing fields.</li>
+                    <li><strong>500 Server Error</strong> — internal issue; retry after a short delay.</li>
                   </ul>
+                  <h4>Retry recommendations</h4>
+                  <p>Retry transient errors with exponential backoff and make sure you log the error details for debugging.</p>
                 </section>
               )}
             </div>
@@ -366,48 +534,119 @@ const ApiMarketplace = ({ onLogout }) => {
 
         {currentPage === 'dashboard' && (
           <div className="dashboard-page">
-            <h2>API Dashboard</h2>
-            {errorMsg && <div className="error-message">⚠️ {errorMsg}</div>}
-            <section className="dashboard-section">
-              <div className="section-header">
-                <h3>Your API Keys</h3>
-                <button className="btn-primary" onClick={() => setShowCreateKeyModal(true)} disabled={loading}>+ Create New Key</button>
+            <div className="dashboard-hero">
+              <div className="dashboard-hero-copy">
+                <span className="eyebrow">API Control Center</span>
+                <h2>Modern API Dashboard</h2>
+                <p>Manage your Deepernova API keys, monitor usage, and keep every integration secure with a polished control panel built for fast decisions.</p>
               </div>
-              {loading ? <p>Loading...</p> : apiKeys.length === 0 ? <p className="empty-state">No API keys yet</p> : (
-                <div className="api-keys-table">
-                  <table>
-                    <thead>
-                      <tr><th>Name</th><th>Key</th><th>Created</th><th>Status</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody>
-                      {apiKeys.map((key) => (
-                        <tr key={key.id}>
-                          <td className="key-name">{key.name}</td>
-                          <td className="key-value"><code>{key.key}</code></td>
-                          <td>{new Date(key.createdAt).toLocaleDateString()}</td>
-                          <td><span className={`status-badge ${key.isActive ? 'active' : 'inactive'}`}>{key.isActive ? '✓ Active' : '✗ Inactive'}</span></td>
-                          <td className="key-actions">
-                            <button className="btn-small btn-view" onClick={() => viewFullKey(key.id)}>View</button>
-                            <button className="btn-small btn-toggle" onClick={() => updateApiKey(key.id, { isActive: !key.isActive })}>{key.isActive ? 'Disable' : 'Enable'}</button>
-                            <button className="btn-small btn-delete" onClick={() => deleteApiKey(key.id)}>Delete</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <div className="dashboard-hero-actions">
+                <button className="btn-primary" onClick={() => setShowCreateKeyModal(true)} disabled={loading}>Create New Key</button>
+                <button className="btn-secondary" onClick={() => fetchApiKeys()} disabled={loading}>Refresh Data</button>
+              </div>
+            </div>
+
+            {errorMsg && <div className="error-message">⚠️ {errorMsg}</div>}
+
+            <div className="dashboard-metrics-grid">
+              <div className="metric-card">
+                <h4>Total API Keys</h4>
+                <p className="metric-value">{totalKeys}</p>
+                <span className="metric-label">Keys available for your projects</span>
+              </div>
+              <div className="metric-card">
+                <h4>Active Keys</h4>
+                <p className="metric-value">{activeKeys}</p>
+                <span className="metric-label">Live credentials in use</span>
+              </div>
+              <div className="metric-card">
+                <h4>Total Requests</h4>
+                <p className="metric-value">{totalRequests.toLocaleString()}</p>
+                <span className="metric-label">Calls processed this period</span>
+              </div>
+              <div className="metric-card">
+                <h4>Token Spend</h4>
+                <p className="metric-value">${totalCost}</p>
+                <span className="metric-label">Estimated billing impact</span>
+              </div>
+            </div>
+
+            <div className="dashboard-main-grid">
+              <section className="dashboard-section dashboard-panel">
+                <div className="section-header">
+                  <div>
+                    <h3>API Keys</h3>
+                    <p className="section-subtitle">Securely manage keys and permissions in one place.</p>
+                  </div>
+                  <button className="btn-primary" onClick={() => setShowCreateKeyModal(true)} disabled={loading}>+ Create Key</button>
                 </div>
-              )}
-            </section>
-            {usageStats && usageStats.stats && (
-              <section className="dashboard-section">
-                <h3>Usage</h3>
-                <div className="stats-grid">
-                  <div className="stat-card"><h4>Requests</h4><p className="stat-value">{usageStats.stats.totalRequests || 0}</p></div>
-                  <div className="stat-card"><h4>Tokens</h4><p className="stat-value">{usageStats.stats.totalTokens ? usageStats.stats.totalTokens.toLocaleString() : 0}</p></div>
-                  <div className="stat-card"><h4>Cost</h4><p className="stat-value">${usageStats.stats.totalCost ? usageStats.stats.totalCost.toFixed(2) : '0.00'}</p></div>
+
+                {loading ? (
+                  <p>Loading...</p>
+                ) : apiKeys.length === 0 ? (
+                  <div className="empty-state-card">
+                    <h4>No API keys yet</h4>
+                    <p>Generate your first key to start integrating Deepernova services immediately.</p>
+                  </div>
+                ) : (
+                  <div className="api-keys-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Key</th>
+                          <th>Created</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {apiKeys.map((key) => (
+                          <tr key={key.id}>
+                            <td className="key-name">{key.name}</td>
+                            <td className="key-value"><code>{key.key}</code></td>
+                            <td>{new Date(key.createdAt).toLocaleDateString()}</td>
+                            <td><span className={`status-badge ${key.isActive ? 'active' : 'inactive'}`}>{key.isActive ? 'Active' : 'Inactive'}</span></td>
+                            <td className="key-actions">
+                              <button className="btn-small btn-view" onClick={() => viewFullKey(key.id)}>View</button>
+                              <button className="btn-small btn-toggle" onClick={() => updateApiKey(key.id, { isActive: !key.isActive })}>{key.isActive ? 'Disable' : 'Enable'}</button>
+                              <button className="btn-small btn-delete" onClick={() => deleteApiKey(key.id)}>Delete</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+
+              <section className="dashboard-section dashboard-panel dashboard-insights">
+                <div className="insights-card">
+                  <div className="insights-header">
+                    <div>
+                      <h4>Usage Trend</h4>
+                      <p>Quick glance at recent API activity.</p>
+                    </div>
+                    <span className="badge">Live</span>
+                  </div>
+                  <div className="chart-placeholder">Chart preview coming soon</div>
+                </div>
+
+                <div className="insights-card recent-activity">
+                  <div className="insights-header">
+                    <div>
+                      <h4>Quick Insights</h4>
+                      <p>Essential information for secure operation.</p>
+                    </div>
+                  </div>
+                  <ul className="stat-list">
+                    <li className="stat-list-item"><span>Active key ratio</span><strong>{totalKeys ? `${Math.round((activeKeys / totalKeys) * 100)}%` : '0%'}</strong></li>
+                    <li className="stat-list-item"><span>Recent refresh</span><strong>just now</strong></li>
+                    <li className="stat-list-item"><span>Recommended action</span><strong>Rotate inactive keys regularly.</strong></li>
+                  </ul>
                 </div>
               </section>
-            )}
+            </div>
           </div>
         )}
       </div>
