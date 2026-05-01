@@ -381,7 +381,11 @@ const ChatBot = ({ onLogout, user, isAuthenticated, isGuest }) => {
     }
   };
 
-  const hasCodeMessage = messages.some(msg => msg.sender === 'bot' && msg.text && msg.text.includes('```'));
+  // Check if last message has code (not just any message)
+  const hasCodeMessage = messages.length > 0 && 
+    messages[messages.length - 1].sender === 'bot' && 
+    messages[messages.length - 1].text && 
+    messages[messages.length - 1].text.includes('```');
 
   useEffect(() => {
     if (hasCodeMessage && !prevHasCodeRef.current) {
@@ -392,6 +396,21 @@ const ChatBot = ({ onLogout, user, isAuthenticated, isGuest }) => {
       setShowCodePanelPulse(false);
     }
   }, [hasCodeMessage]);
+
+  // Initialize RAG knowledge base on mount
+  useEffect(() => {
+    const initializeRag = async () => {
+      try {
+        const success = await ragService.ingestKnowledgeBase('/data/datasets/orion_dataset.json');
+        if (success) {
+          console.log('✅ RAG Knowledge Base Ready');
+        }
+      } catch (e) {
+        console.debug('RAG initialization optional:', e?.message);
+      }
+    };
+    initializeRag();
+  }, []);
 
   const confirmLogout = async () => {
     setLogoutLoading(true);
@@ -1203,11 +1222,25 @@ const ChatBot = ({ onLogout, user, isAuthenticated, isGuest }) => {
       return `__FORMULA_BLOCK_${index}__`;
     });
     
-    // Extract inline formulas - \(...\) or $...$
-    processedText = processedText.replace(/\\\(\s*([^\)]*?)\s*\\\)|\$\s*([^\$\n]+?)\s*\$/g, (match, latexInline, dollarInline) => {
-      const formula = latexInline || dollarInline;
+    // Extract inline formulas - \(...\) or $...$ (improved to handle more cases)
+    // First handle \(...\) format
+    processedText = processedText.replace(/\\\(\s*([\s\S]*?)\s*\\\)/g, (match, latexInline) => {
+      const formula = latexInline;
       const index = formulaBlocks.length;
       formulaBlocks.push({ type: 'inline', formula: formula.trim() });
+      return `__FORMULA_BLOCK_${index}__`;
+    });
+    
+    // Then handle single $ formulas more carefully (avoid matching inside code/text)
+    // Match $...$  but not $$...$$ and not when preceded/followed by backticks
+    processedText = processedText.replace(/(?<!\$)(?<![`])\$(?!\$)([^\$\n]+?)\$(?!\$)/g, (match, dollarInline) => {
+      const formula = dollarInline.trim();
+      // Skip if it looks like currency or empty
+      if (!formula || formula.length < 2 || /^\d+$/.test(formula)) {
+        return match; // Return original match if it's just a number
+      }
+      const index = formulaBlocks.length;
+      formulaBlocks.push({ type: 'inline', formula: formula });
       return `__FORMULA_BLOCK_${index}__`;
     });
     
@@ -1445,21 +1478,31 @@ const ChatBot = ({ onLogout, user, isAuthenticated, isGuest }) => {
         for (let i = 0; i < paragraphs.length; i++) {
           const para = paragraphs[i].trim();
           if (para) {
-            // Handle bold text within paragraph - improved regex that handles multiline
-            // Match **text** or __text__ even across newlines
-            const boldSegments = para.split(/(\*\*[\s\S]*?\*\*|__[\s\S]*?__)/g);
-            result.push(
-              <p key={`p-${i}`} className="message-paragraph">
-                {boldSegments.map((segment, segIdx) => {
-                  if ((segment.startsWith('**') && segment.endsWith('**')) ||
-                      (segment.startsWith('__') && segment.endsWith('__'))) {
-                    return <strong key={segIdx}>{segment.slice(2, -2)}</strong>;
-                  }
-                  // Just render the segment as-is, no auto-bold fallback
-                  return segment;
-                })}
-              </p>
-            );
+            // Clean up any remaining placeholder markers that weren't properly replaced
+            let cleanPara = para.replace(/<<PLACEHOLDER_\d+>>/g, '');
+            
+            // Also clean up formula block markers that might have slipped through
+            cleanPara = cleanPara.replace(/__FORMULA_BLOCK_\d+__/g, '');
+            cleanPara = cleanPara.replace(/__CODE_BLOCK_\d+__/g, '');
+            cleanPara = cleanPara.replace(/__TABLE_BLOCK_\d+__/g, '');
+            
+            if (cleanPara.trim()) {
+              // Handle bold text within paragraph - improved regex that handles multiline
+              // Match **text** or __text__ even across newlines
+              const boldSegments = cleanPara.split(/(\*\*[\s\S]*?\*\*|__[\s\S]*?__)/g);
+              result.push(
+                <p key={`p-${i}`} className="message-paragraph">
+                  {boldSegments.map((segment, segIdx) => {
+                    if ((segment.startsWith('**') && segment.endsWith('**')) ||
+                        (segment.startsWith('__') && segment.endsWith('__'))) {
+                      return <strong key={segIdx}>{segment.slice(2, -2)}</strong>;
+                    }
+                    // Just render the segment as-is, no auto-bold fallback
+                    return segment;
+                  })}
+                </p>
+              );
+            }
           }
         }
       }
@@ -1611,6 +1654,15 @@ Penjelasan langkah demi langkah tentang bagaimana Anda memproses dan menjawab pe
 Setelah section <reasoning>, tuliskan jawaban lengkap Anda.
 
 Pastikan selalu gunakan tags <reasoning></reasoning> yang tepat.`;
+    }
+
+    // Retrieve relevant context from RAG knowledge base
+    const ragResults = ragService.search(inputValue, 3, 'knowledge_base');
+    if (ragResults && ragResults.length > 0) {
+      const ragContext = ragService.formatContextForPrompt(ragResults, 1000);
+      if (ragContext.trim()) {
+        fullMessage = `${fullMessage}\n\n${ragContext}`;
+      }
     }
 
     // Check token limit (global across all rooms)
