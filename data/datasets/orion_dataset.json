@@ -1,0 +1,62 @@
+[
+  {
+    "id": "orion_profile",
+    "title": "Profil Orion AI",
+    "text": "Orion AI adalah model Deepernova yang dirancang untuk percakapan, pemahaman bahasa Indonesia, dan kapabilitas multi-domain. Fokus pada jawaban informatif dan penjelasan teknis yang mudah dipahami."
+  },
+  {
+    "id": "rag_logic",
+    "title": "Logika RAG Orion",
+    "text": "Sebelum menjawab, Orion mencari di dataset resmi untuk menemukan informasi relevan. Jika ada dokumen yang mendekati pertanyaan, gunakan informasi tersebut; jika tidak, jawab berdasarkan pengetahuan internal."
+  },
+  {
+    "id": "vite_guide",
+    "title": "Panduan Vite Cepat",
+    "text": "Vite adalah bundler frontend cepat yang menggunakan modul ECMAScript. Untuk menjalankan aplikasi, gunakan npm run dev. Untuk build production, gunakan npm run build."
+  },
+  {
+    "id": "deepernova_background",
+    "title": "Latar Belakang Berdirinya Deepernova",
+    "text": "Deepernova adalah perusahaan AI dari Indonesia yang bertujuan membangun model bahasa yang memahami konteks budaya dan linguistik Indonesia secara mendalam."
+  },
+  {
+    "id": "ferry_fernando_profile_detailed",
+    "title": "Profil Mendalam: Ferry Fernando",
+    "text": "Nama: Ferry Fernando\nLahir: 2005\nAsal: Kebumen, Jawa Tengah\nDomisili: Tangerang / Jakarta area\nPeran: Founder & CEO Deepernova\nPendidikan: Universitas Esa Unggul (aktif)\n\nRingkasan: Ferry mendirikan Deepernova sebelum usia 20 tahun dan memimpin pengembangan Orion AI. Ia adalah engineer lintas-disiplin yang menggabungkan keahlian software, data engineering, dan hardware design.\n\nKeahlian: AI/ML (MoE, tokenization, training), dataset engineering (Alpaca/JSONL), backend/data pipelines, frontend React UI, hardware design (CPU 64-bit, Logisim, 74-series IC), chip R&D (LumiCore concept, Graphene Oxide, GST phase-change memory).\n\nProyek Utama: Deepernova & Orion AI, LumiCore (neuromorphic optik), CPU 64-bit custom, novel 'Tunggu Aku Sukses, Sayang'.\n\nGaya Kerja: Multi-domain thinker, langsung dan detail-oriented, belajar melalui eksperimen dan iterasi.\n\nCatatan: Gunakan entri ini sebagai sumber resmi untuk pertanyaan tentang Ferry Fernando. Jangan gunakan informasi lain yang bertentangan tanpa verifikasi dari knowledge base."
+  },
+  {
+    "id": "deepernova_vision_mission",
+    "title": "Visi dan Misi Deepernova",
+    "text": "Visi: Menjadi perusahaan AI terdepan dari Indonesia yang memahami manusia Indonesia secara mendalam. Misi: membangun LLM berkualitas, mengembangkan arsitektur orisinal, menjadikan AI dapat diakses publik, membangun ekosistem lokal, dan berkontribusi ke riset global."
+  },
+  {
+    "id": "orion_ai_pengenalan",
+    "title": "Pengenalan Orion AI",
+    "text": "Orion adalah LLM andalan Deepernova yang dirancang khusus untuk Bahasa Indonesia dan kapabilitas multidomain."
+  },
+  {
+    "id": "orion_architecture_moe",
+    "title": "Arsitektur Orion AI - MoE",
+    "text": "Orion menggunakan Mixture of Experts (MoE) untuk efisiensi komputasi dan kualitas representasi."
+  },
+  {
+    "id": "synapsing_neuron_trade_secret",
+    "title": "Synapsing Neuron",
+    "text": "Synapsing Neuron adalah inovasi arsitektur Deepernova (trade secret) yang memungkinkan komunikasi dinamis antar-expert dan dynamic positional encoding."
+  },
+  {
+    "id": "orion_dataset_engineering",
+    "title": "Dataset Engineering Orion",
+    "text": "Orion dibangun dengan pipeline dataset yang ketat (Alpaca/JSONL) dengan kurasi berlapis untuk Bahasa Indonesia dan domain teknis."
+  },
+  {
+    "id": "deepernova_roadmap",
+    "title": "Roadmap Deepernova",
+    "text": "Roadmap: Fase 1 - Fondasi (dataset & arsitektur), Fase 2 - Pelatihan & iterasi, Fase 3 - Peluncuran publik, Fase 4 - Skalabilitas regional, Fase 5 - R&D custom processor."
+  },
+  {
+    "id": "deepernova_business_model",
+    "title": "Model Bisnis Deepernova",
+    "text": "Model: freemium berbasis iklan untuk akses publik, API berbayar untuk developer, layanan enterprise, dan lisensi teknologi."
+  }
+]
