@@ -18,9 +18,13 @@ import { SQLiteSessionStore } from './sessionStore.js';
 import { v4 as uuidv4 } from 'uuid';
 import agentRoutes from './routes/agent.js';
 import apiProxyRoutes from './routes/api-proxy.js';
+import ragService from './ragService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// RAG Service initialization flag
+let ragInitialized = false;
 
 const envPath = path.join(__dirname, '..', '.env');
 dotenv.config({ path: envPath });
@@ -454,6 +458,8 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
  * Proxy AI chat requests through the backend and hide the API key from the client.
  * POST /api/chat
  * Body: { model, messages, temperature?, max_tokens?, stream? }
+ * 
+ * Injects RAG context from knowledge base before sending to LLM
  */
 app.post('/api/chat', async (req, res) => {
   if (!DEEPSEEK_API_KEY) {
@@ -464,9 +470,38 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
+    // Initialize RAG on first request
+    if (!ragInitialized) {
+      const success = await ragService.loadKnowledgeBase();
+      ragInitialized = success;
+    }
+
+    let messages = JSON.parse(JSON.stringify(req.body.messages)); // Deep clone
+
+    // Extract last user message for RAG search
+    let userQuery = '';
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        userQuery = messages[i].content;
+        break;
+      }
+    }
+
+    // Search for relevant context from knowledge base
+    if (userQuery && ragInitialized) {
+      const searchResults = ragService.search(userQuery, 3, 'knowledge_base');
+      if (searchResults.length > 0) {
+        const ragContext = ragService.formatContextForPrompt(searchResults, 1000);
+        if (ragContext) {
+          messages = ragService.injectContext(messages, ragContext);
+          console.log(`[RAG] Injected ${searchResults.length} documents for query`);
+        }
+      }
+    }
+
     const requestBody = {
       model: req.body.model || 'deepseek-v4-pro',
-      messages: req.body.messages,
+      messages: messages,
       temperature: req.body.temperature ?? 0.7,
       max_tokens: req.body.max_tokens ?? 8192,
       stream: req.body.stream ?? false,
